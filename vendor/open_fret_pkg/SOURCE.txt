@@ -1,0 +1,1 @@
+Source: https://github.com/mylonasc/open-fret @ 20fa647 (MIT). Weights: huggingface.co/mylonasc/open-fret-tab (MIT).

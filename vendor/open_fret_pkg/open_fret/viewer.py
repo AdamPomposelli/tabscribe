@@ -1,0 +1,357 @@
+"""Viewer data plumbing for ui/tab_data_viewer (Issue #13).
+
+Builds a self-contained bundle from a model I/O pair:
+  input  = MIDI notes (file or reconstructed from NO_/NF_/TS_ tokens)
+  output = predicted TAB tokens rendered to AlphaTex
+
+``to_html`` wraps the bundle with the React viewer (dist bundle inlined)
+so a notebook cell can render playable + seekable tab + MIDI.
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import os
+import sys
+import tempfile
+import uuid
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from open_fret.render import TabRenderer
+
+TICKS_PER_BEAT = 480
+
+
+def renderer_for_input(midi_tokens, tempo=120):
+    """Match generated tab audio to the source window's actual tuning/capo."""
+    if isinstance(midi_tokens, str):
+        midi_tokens = midi_tokens.split()
+    tuning, capo = None, 0
+    for token in midi_tokens[:2]:
+        if token.startswith("TUNING_"):
+            tuning = [int(v) for v in token[7:].split("_")]
+        elif token.startswith("CAPO_"):
+            capo = int(token[5:])
+    if tuning is None:
+        return TabRenderer(tempo=tempo)
+    names = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+    while tuning and tuning[-1] < 0:
+        tuning.pop()
+    if any(p < 0 for p in tuning):
+        raise ValueError("Viewer cannot omit an internal unavailable string")
+    written = " ".join(f"{names[(p + capo) % 12]}{(p + capo) // 12}" for p in tuning)
+    return TabRenderer(tempo=tempo, tuning_str=written)
+
+
+def midi_tokens_to_notes(midi_tokens, default_duration=480):
+    """Pair ON/OFF events into notes with absolute ticks.
+
+    Returns list of {"start", "end", "pitch"} sorted by start time.
+    Stray OFFs are ignored; dangling ONs close at track end.
+    """
+    if isinstance(midi_tokens, str):
+        midi_tokens = midi_tokens.split()
+    time = 0
+    open_notes: dict[int, list[int]] = {}
+    notes: list[dict] = []
+    for tok in midi_tokens:
+        if tok.startswith("TS_"):
+            try:
+                time += int(tok.split("_")[1])
+            except ValueError:
+                continue
+        elif tok.startswith("NO_"):
+            try:
+                p = int(tok.split("_")[1])
+            except ValueError:
+                continue
+            open_notes.setdefault(p, []).append(time)
+        elif tok.startswith("NF_"):
+            try:
+                p = int(tok.split("_")[1])
+            except ValueError:
+                continue
+            stack = open_notes.get(p)
+            if stack:
+                notes.append({"start": stack.pop(), "end": time, "pitch": p})
+    for p, stack in open_notes.items():
+        for s in stack:
+            end = max(time, s + default_duration)
+            notes.append({"start": s, "end": end, "pitch": p})
+    notes.sort(key=lambda n: (n["start"], n["pitch"]))
+    return notes
+
+
+def notes_to_midi_bytes(notes, tempo=120, ticks_per_beat=TICKS_PER_BEAT):
+    """Serialize notes to Standard MIDI bytes (pretty_midi).
+
+    Program is Acoustic Guitar (nylon), matching the AlphaTab tab track
+    (``\\instrument 24``). The bytes back the downloadable ``.mid`` artifact;
+    in-browser audio comes from the AlphaTab player.
+    """
+    import pretty_midi
+
+    pm = pretty_midi.PrettyMIDI(initial_tempo=tempo)
+    program = pretty_midi.instrument_name_to_program("Acoustic Guitar (nylon)")
+    instrument = pretty_midi.Instrument(program=program, is_drum=False)
+    sec_per_tick = 60.0 / (tempo * ticks_per_beat)
+    for n in notes:
+        start = max(0.0, n["start"] * sec_per_tick)
+        end = max(start + 0.01, n["end"] * sec_per_tick)
+        instrument.notes.append(pretty_midi.Note(
+            velocity=100, pitch=int(n["pitch"]), start=start, end=end))
+    instrument.notes.sort(key=lambda x: x.start)
+    pm.instruments.append(instrument)
+    with tempfile.NamedTemporaryFile(suffix=".mid", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        pm.write(tmp_path)
+        with open(tmp_path, "rb") as f:
+            return f.read()
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+def build_view_bundle(midi_path=None, midi_tokens=None, tab_tokens=None,
+                      reference_tab_tokens=None,
+                      title="open-fret sample", tempo=120):
+    """Build a viewer bundle dict (JSON-serializable).
+
+    Provide either ``midi_path`` (a .mid file) or ``midi_tokens`` (model
+    input token stream). ``tab_tokens`` is the predicted TAB token stream.
+    ``reference_tab_tokens`` is optional ground truth (e.g. a validation
+    window's reference); when supplied, viewers expose a predicted/actual
+    toggle backed by two independently rendered scores. The bundle also
+    carries a pitched rendering of the exact input notes (``midi_alpha_tex``)
+    so viewers can A/B the tab against the input through one player.
+    """
+    from open_fret.midi_io import midi_file_to_tokens
+
+    if tab_tokens is None:
+        raise ValueError("tab_tokens is required (predicted TAB token stream).")
+    if isinstance(tab_tokens, str):
+        tab_tokens = tab_tokens.split()
+    if reference_tab_tokens is not None and isinstance(reference_tab_tokens, str):
+        reference_tab_tokens = reference_tab_tokens.split()
+    if midi_path is not None:
+        with open(midi_path, "rb") as f:
+            midi_bytes = f.read()
+        input_tokens = midi_file_to_tokens(midi_path)
+    elif midi_tokens is not None:
+        if isinstance(midi_tokens, str):
+            midi_tokens = midi_tokens.split()
+        input_tokens = list(midi_tokens)
+        midi_bytes = notes_to_midi_bytes(
+            midi_tokens_to_notes(input_tokens), tempo=tempo)
+    else:
+        raise ValueError("Provide midi_path or midi_tokens.")
+
+    notes = midi_tokens_to_notes(input_tokens)
+    renderer = renderer_for_input(input_tokens, tempo=tempo)
+    alpha_tex = renderer.to_alphatex(tab_tokens, title=title)
+    reference_alpha_tex = (renderer.to_alphatex(
+        reference_tab_tokens, title=f"{title} (actual reference)")
+        if reference_tab_tokens is not None else None)
+    # Pitched rendering of the exact input notes: the viewer's Listen toggle
+    # plays this through the same AlphaTab player as the tab (no 2nd clock).
+    midi_alpha_tex = renderer.to_alphatex_midi(notes, title=f"{title} (input MIDI)")
+    pitches = [n["pitch"] for n in notes]
+    bundle = {
+        "title": title,
+        "tempo": tempo,
+        "ticks_per_beat": TICKS_PER_BEAT,
+        "midi_b64": base64.b64encode(midi_bytes).decode("ascii"),
+        "alpha_tex": alpha_tex,
+        "midi_alpha_tex": midi_alpha_tex,
+        "input_tokens": input_tokens,
+        # Absolute-tick note identities let the browser piano roll draw the
+        # exact input without reparsing MIDI or guessing durations.
+        "input_notes": notes,
+        "tab_tokens": list(tab_tokens),
+        "meta": {
+            "n_input_tokens": len(input_tokens),
+            "n_tab_tokens": len(tab_tokens),
+            "n_input_notes": len(notes),
+            "pitch_min": min(pitches) if pitches else None,
+            "pitch_max": max(pitches) if pitches else None,
+        },
+    }
+    if reference_tab_tokens is not None:
+        bundle["reference_alpha_tex"] = reference_alpha_tex
+        bundle["reference_tab_tokens"] = list(reference_tab_tokens)
+        bundle["meta"]["n_reference_tab_tokens"] = len(reference_tab_tokens)
+    return bundle
+
+
+
+ALPHATAB_JS = ("https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.3.0"
+               "/dist/alphaTab.min.js")
+SOUNDFONT_URL = ("https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.3.0"
+                 "/dist/soundfont/sonivox.sf2")
+# Rendering-only piano roll (MIT): grid, note rectangles and playhead.
+# AlphaTab owns the single audio/clock transport; the roll follows its tick
+# position. Pinned: UMD global names and config are version-specific.
+WAVE_ROLL_JS = ("https://cdn.jsdelivr.net/npm/wave-roll@0.4.0"
+                "/dist/wave-roll.umd.js")
+
+
+# Rendering-only piano roll (MIT): grid, note rectangles and playhead.
+# AlphaTab owns the single audio/clock transport; the roll follows its tick
+# position. Pinned: UMD global names and config are version-specific.
+WAVE_ROLL_JS = ("https://cdn.jsdelivr.net/npm/wave-roll@0.4.0"
+                "/dist/wave-roll.umd.js")
+# Offline copies for notebook embedding (see scripts/vendor_viewer_js.py).
+# Same bytes as the CDN pins above; licenses travel with the files.
+VENDOR_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          "ui", "tab_data_viewer", "vendor")
+VENDOR_FILES = ("alphaTab.min.js", "wave-roll.umd.js", "sonivox.sf2")
+
+
+def _vendor_bytes(name):
+    path = os.path.join(VENDOR_DIR, name)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(
+            f"Missing vendored blob {path}. Run scripts/vendor_viewer_js.py.")
+    with open(path, "rb") as f:
+        return f.read()
+
+
+def _vendor_js(name):
+    return _vendor_bytes(name).decode("utf-8")
+
+
+def _vendor_b64(name):
+    import base64
+    return base64.b64encode(_vendor_bytes(name)).decode("ascii")
+
+
+def to_html(bundle, dist_js=None, mount_name="TabDataViewer", with_deps=True,
+            inline_deps=False):
+    """Render a self-contained viewer HTML string for notebook/page embedding.
+
+    ``dist_js`` is the built UMD bundle text (reads
+    ui/tab_data_viewer/dist/* at call sites). Each call mints unique element
+    ids so multiple cells can coexist.
+
+    Pass ``with_deps=False`` (and ``dist_js=None``) for the 2nd..Nth bundle
+    on a page that already includes the CDN scripts + dist bundle once —
+    re-executing the dist bundle remounts React roots and wastes bandwidth.
+    See ``scripts/make_run_viewer.py``.
+
+    Pass ``inline_deps=True`` to embed the vendored AlphaTab/WaveRoll/soundfont
+    blobs instead of ``<script src>`` CDN tags: the page then needs no network
+    at all (notebooks, offline review). Web pages keep the CDN default so
+    pages stay small and cache-shared.
+    """
+    uid = uuid.uuid4().hex[:8]
+    # json.dumps never emits "</script>", but TAB/AlphaTex text is
+    # user-derived; neutralize the closing tag unconditionally.
+    bundle_json = json.dumps(bundle).replace("</", "<\\/")
+    # NOTE: the dist bundle must come BEFORE the mount script — scripts
+    # execute in order, and mounting needs window[mount_name] to exist.
+    deps = ""
+    if with_deps:
+        if dist_js is None:
+            raise ValueError("dist_js is required when with_deps=True.")
+        if inline_deps:
+            # Zero-network page: pre-create AlphaTab's style element (id
+            # alphaTabStyle) so it never derives blob: font URLs from the
+            # blob-loaded script; WaveRoll executes inline (no script-file
+            # detection needed); the render worker bootstraps from an
+            # importScripts(data:) URL which works where blob: fails; the
+            # soundfont ships as a blob URL. The mount waits on __OFV_READY.
+            # MusicFontSize 34 matches the vendored AlphaTab 1.3.0 default.
+            style_css = ("@font-face{font-family:'alphaTab';"
+                         f"src:url(data:font/woff2;base64,{_vendor_b64('Bravura.woff2')})"
+                         " format('woff2');font-weight:normal;font-style:normal;}"
+                         ".at-surface *{cursor:default;vertical-align:top;overflow:visible;}"
+                         ".at-surface-svg text{dominant-baseline:central;}"
+                         ".at{font-family:'alphaTab';speak:none;font-style:normal;font-weight:normal;"
+                         "font-variant:normal;text-transform:none;line-height:1;"
+                         "-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;"
+                         "font-size:34px;overflow:visible !important;}")
+            deps = (
+                f"<style id=\"alphaTabStyle\">{style_css}</style>\n"
+                f"<script>\n{_vendor_js('wave-roll.umd.js')}\n</script>\n"
+                f"<script>\nwindow.__OFV_AT_SRC=\"{_vendor_b64('alphaTab.min.js')}\";\n</script>\n"
+                "<script>\n"
+                "(function(){\n"
+                "function b64Bytes(b){var s=atob(b);var u=new Uint8Array(s.length);"
+                "for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;}\n"
+                "function load(src){return new Promise(function(res,rej){"
+                "var el=document.createElement('script');"
+                "el.onload=function(){res();};"
+                "el.onerror=function(){rej(new Error('script load failed: '+src));};"
+                "el.src=src;document.head.appendChild(el);});}\n"
+                f"window.__OFV_SOUNDFONT_URL=URL.createObjectURL(new Blob([b64Bytes(\"{_vendor_b64('sonivox.sf2')}\")],{{type:'audio/x-soundfont'}}));\n"
+                "// data: URL for the render worker: importScripts(data:) works where\n"
+                "// importScripts(blob:) fails (opaque origins). Execution below still\n"
+                "// uses a blob: script tag, which is a proven pattern.\n"
+                "window.__OFV_AT_SCRIPT_URL='data:text/javascript;base64,'+window.__OFV_AT_SRC;\n"
+                "window.__OFV_READY=load(URL.createObjectURL(new Blob([b64Bytes(window.__OFV_AT_SRC)],{type:'text/javascript'})));\n"
+                "window.__OFV_AT_SRC=null;\n"
+                "})();\n"
+                "</script>\n"
+                f"<script>\n{dist_js}\n</script>\n")
+        else:
+            deps = (f'<script src="{WAVE_ROLL_JS}"></script>\n'
+                    f'<script src="{ALPHATAB_JS}"></script>\n'
+                    f"<script>\n{dist_js}\n</script>\n")
+    ready = "(window.__OFV_READY||Promise.resolve())"
+    return f"""{deps}<div id="ofv-{uid}" class="ofv-root"></div>
+<script>
+{ready}.then(function() {{
+  if (!window.{mount_name}) {{
+    document.getElementById("ofv-{uid}").innerHTML =
+      "<p><b>Viewer bundle failed to load.</b> "
+      + "The component script (dist) may be missing; tokens are still "
+      + "inspectable in the notebook variables.</p>";
+    return;
+  }}
+  window.__OFV_BUNDLES = window.__OFV_BUNDLES || {{}};
+  window.__OFV_BUNDLES["{uid}"] = {bundle_json};
+  try {{
+    window.{mount_name}.mount(
+      document.getElementById("ofv-{uid}"),
+      window.__OFV_BUNDLES["{uid}"]);
+  }} catch (err) {{
+    document.getElementById("ofv-{uid}").innerHTML =
+      "<p><b>Viewer failed to start:</b> " + String(err) + "</p>";
+    console.error(err);
+  }}
+}}).catch(function(err) {{
+  document.getElementById("ofv-{uid}").innerHTML =
+    "<p><b>Viewer runtime failed to load:</b> " + String(err) + "</p>";
+  console.error(err);
+}});
+</script>"""
+
+
+def show(bundle_or_path, dist_path=None, inline_deps=True):
+    """Display a bundle in a Jupyter cell. Returns an IPython HTML object.
+
+    ``inline_deps=True`` (default) embeds the vendored AlphaTab/WaveRoll/
+    soundfont blobs so the viewer works with no CDN access; pass False for
+    the smaller CDN-tagged variant.
+    """
+    from IPython.display import HTML
+    if isinstance(bundle_or_path, str):
+        with open(bundle_or_path, encoding="utf-8") as f:
+            bundle = json.load(f)
+    else:
+        bundle = bundle_or_path
+    if dist_path is None:
+        here = os.path.dirname(os.path.abspath(__file__))
+        dist_dir = os.path.join(os.path.dirname(here), "ui", "tab_data_viewer", "dist")
+        cands = sorted(f for f in os.listdir(dist_dir) if f.endswith(".js"))
+        if not cands:
+            raise FileNotFoundError(f"No built viewer bundle in {dist_dir}. Run npm run build.")
+        dist_path = os.path.join(dist_dir, cands[0])
+    with open(dist_path, encoding="utf-8") as f:
+        dist_js = f.read()
+    return HTML(to_html(bundle, dist_js, inline_deps=inline_deps))

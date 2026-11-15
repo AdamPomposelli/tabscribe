@@ -1,0 +1,64 @@
+{
+  "name": "tabscribe-desktop",
+  "productName": "Tabscribe",
+  "version": "0.1.0",
+  "description": "Tabscribe — audio to guitar tab, running locally",
+  "main": "main.js",
+  "private": true,
+  "author": "Adam Pomposelli",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "start:managed": "TABSCRIBE_MANAGED=1 electron .",
+    "test": "node --test test/installer.test.js",
+    "icon": "electron make-icon.js",
+    "prebuild": "node -e \"require('fs').accessSync('manifest.json')\" || (echo 'desktop/manifest.json missing: run python3 release/build_assets.py first' && exit 1)",
+    "ui": "npm --prefix ../frontend run build",
+    "pack": "npm run prebuild && npm run ui && electron make-icon.js && electron-builder --mac dir --arm64",
+    "dist": "npm run prebuild && npm run ui && electron make-icon.js && electron-builder --mac dmg --arm64"
+  },
+  "build": {
+    "appId": "io.github.adampomposelli.tabscribe",
+    "productName": "Tabscribe",
+    "copyright": "© 2026 Adam Pomposelli",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "installer.js",
+      "loading.html",
+      "manifest.json",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "../backend/tabscribe", "to": "engine/backend/tabscribe", "filter": ["**/*.py"] },
+      { "from": "../vendor/open_fret_pkg", "to": "engine/vendor/open_fret_pkg", "filter": ["**/*", "!**/__pycache__/**"] },
+      { "from": "../vendor/tsumugi/instrument_agnostic_amt", "to": "engine/vendor/tsumugi/instrument_agnostic_amt", "filter": ["**/*", "!**/__pycache__/**"] },
+      { "from": "../vendor/tsumugi/LICENSE", "to": "engine/vendor/tsumugi/LICENSE" },
+      { "from": "../frontend/dist", "to": "engine/frontend/dist" },
+      { "from": "../release/THIRD_PARTY_NOTICES.md", "to": "THIRD_PARTY_NOTICES.md" }
+    ],
+    "afterSign": "scripts/after-sign.js",
+    "mac": {
+      "category": "public.app-category.music",
+      "icon": "build/icon.png",
+      "target": [{ "target": "dmg", "arch": ["arm64"] }],
+      "minimumSystemVersion": "12.0",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist"
+    },
+    "dmg": {
+      "artifactName": "Tabscribe-${version}-${arch}.dmg",
+      "title": "Tabscribe ${version}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  }
+}

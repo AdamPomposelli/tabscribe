@@ -1,0 +1,22 @@
+# Tabscribe backend (Python 3.11)
+basic-pitch==0.4.0
+onnxruntime
+torch
+torchaudio
+beat-this==1.1.0
+demucs==4.1.0
+muscriptor==0.4.0
+huggingface_hub
+safetensors
+librosa
+soundfile
+numpy
+PyGuitarPro
+pretty_midi
+mir_eval
+fastapi
+uvicorn[standard]
+python-multipart
+setuptools<81  # resampy (basic-pitch dep) still imports pkg_resources
+transformers
+madmom @ git+https://github.com/CPJKU/madmom@27f032e8947204902c675e5e341a3faf5dc86dae  # DBN post-processing for beat_this (BSD code; no madmom models used)
