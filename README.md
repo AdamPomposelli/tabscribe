@@ -1,158 +1,213 @@
-# Tabscribe
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/readme/hero-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="brand/readme/hero-light.svg">
+    <img alt="Tabscribe" src="brand/readme/hero-light.svg" height="98">
+  </picture>
+</p>
 
-Local, private audio → **guitar score + tablature** studio. Drop an MP3, get standard
-notation and tab with chord names and diagrams, key signature, tempo, two voices
-(bass / melody), synced playback against the original recording, a piano roll, and
-Guitar Pro / MIDI export. Nothing leaves your machine.
+<h3 align="center">Stop transcribing. Start playing.</h3>
+
+<p align="center">
+  AI writes the score and tab from any guitar recording, so your time goes to playing, not to rewinding.<br>100% free, 100% open source, 100% on your Mac.
+</p>
+
+<p align="center">
+  <a href="https://github.com/AdamPomposelli/tabscribe/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/AdamPomposelli/tabscribe?style=flat-square&color=19C08F&label=release"></a>
+  <img alt="macOS on Apple silicon" src="https://img.shields.io/badge/macOS-Apple%20silicon-3F3F46?style=flat-square&logo=apple&logoColor=white">
+  <img alt="100% free" src="https://img.shields.io/badge/price-100%25%20free-16A34A?style=flat-square">
+  <img alt="Runs offline" src="https://img.shields.io/badge/runs-100%25%20local-0A7C62?style=flat-square">
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-3F3F46?style=flat-square"></a>
+  <a href="https://github.com/AdamPomposelli/tabscribe/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/AdamPomposelli/tabscribe?style=flat-square&color=EAB308&logo=github"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/AdamPomposelli/tabscribe/releases/latest/download/Tabscribe.dmg">
+    <img alt="Download Tabscribe for Mac" src="brand/readme/download-for-mac.svg" width="280">
+  </a>
+  <br>
+  <sub>No account · No subscription · <a href="#quick-start">Ready in about 5 minutes</a></sub>
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick start</a> |
+  <a href="#everything-it-does">Features</a> |
+  <a href="#privacy">Privacy</a> |
+  <a href="#make-it-yours">Make it yours</a> |
+  <a href="#contributing">Contributing</a>
+</p>
+
+<!-- Made with HyperFrames; source and re-render steps in brand/demo/. -->
+<p align="center">
+  <img src="brand/readme/tabscribe-demo.webp" alt="The real Tabscribe app: a recording trimmed, the guitar isolated from the band, the AI models running on the Mac, the score and tab with chord boxes, playback synced to the original recording, the capo suggestion and the guitar sounds" width="800">
+</p>
+
+## ❤️ Why Tabscribe
+
+Working out a song by ear means hours of rewinding the same four seconds. Let the AI do that part.
+
+<table>
+  <tr>
+    <td align="center" width="72"><h3>⏱️</h3></td>
+    <td><b>Hours back, every song.</b><br>Drop a recording, get the score and the tab in about a minute: notes, rhythm, chords, key, tempo and a fingering you can actually play.</td>
+  </tr>
+  <tr>
+    <td align="center"><h3>🔒</h3></td>
+    <td><b>Your music stays yours.</b><br>Every model runs on your Mac. Your recordings are never uploaded, and there is no Tabscribe server to send them to.</td>
+  </tr>
+  <tr>
+    <td align="center"><h3>💸</h3></td>
+    <td><b>Free. Really.</b><br>No subscription, no trial minutes, no account. Transcribe as many songs as you like, as long as you like.</td>
+  </tr>
+</table>
+
+> [!NOTE]
+> **Built by a guitarist who was tired of rewinding.** Tabscribe was tuned song after song against hand-checked transcriptions, including live takes that drift in tempo. If a tab comes out wrong, [tell us](https://github.com/AdamPomposelli/tabscribe/issues/new).
+
+<a id="quick-start"></a>
+
+## ⏱️ Quick start
+
+From download to your first tab in **about 5 minutes**.
+
+| | Step | ⏱ |
+|:-:|---|:-:|
+| **1** | ⬇️ **[Download Tabscribe.dmg](https://github.com/AdamPomposelli/tabscribe/releases/latest/download/Tabscribe.dmg)**, open it, and drag Tabscribe onto Applications. | 20 s |
+| **2** | 🔓 **Open Tabscribe.** macOS blocks the first launch: right-click the app and choose **Open**, or go to *System Settings → Privacy & Security* and click **Open Anyway**. | 20 s |
+| **3** | 📦 **Install the engine.** The first launch shows exactly what it needs (about 1.5 GB to download, 3 GB on disk), then downloads it with progress bars and checks every file. | 2–4 min |
+| **4** | 🎸 **Drop a recording.** Trim it, say whether the guitar plays alone or with a band, and press *Start transcription*. | 20 s |
+| **5** | ✨ **Play.** Score, tab and chord boxes, synced to your recording. | <b>~1&nbsp;min&nbsp;⚡</b> |
+
+> [!IMPORTANT]
+> Step 2 is there because Tabscribe isn't notarised by Apple yet. You do it once.
+
+> [!TIP]
+> After the first launch, Tabscribe works **fully offline**. *Settings → Components* lets you check, repair, add or remove parts later, like the lighter Demucs isolation or the optional MuScriptor model.
+
+## 🎼 From recording to tab
+
+Every project goes through the same steps, all on your Mac.
+
+| | Step | What happens |
+|:-:|---|---|
+| ✂️ | **Trim** | Keep only the part you want to learn. |
+| 🎚️ | **Isolate** | With vocals or a band, the guitar is separated first (BS-RoFormer). On band recordings this lifts note accuracy from 0.71 to 0.84. |
+| 🥁 | **Beats** | Beats and downbeats are tracked, even when the tempo drifts in a live take. |
+| 🎵 | **Notes** | Up to seven transcription models vote on every note. |
+| 🎼 | **Chords & key** | Chord names, key and time signature, spelled the way a guitarist reads them. |
+| 🖐️ | **Fingering** | A fingering model picks positions a hand can actually play. |
+
+<a id="everything-it-does"></a>
+
+## ✨ Everything it does
+
+<table>
+  <tr>
+    <td width="50%" valign="top">🎸 <b>Score and tab, together</b><br>Standard notation and tablature, with chord names and chord boxes above every change, the key, the tempo, and bass and melody as two voices.</td>
+    <td width="50%" valign="top">🎚️ <b>The guitar, isolated by AI</b><br>Vocals, drums and band removed before transcribing, so the notes come from the guitar and nothing else.</td>
+  </tr>
+  <tr>
+    <td valign="top">🔁 <b>Synced to the recording</b><br>Switch between the transcription and the original recording without stopping. The cursor follows both.</td>
+    <td valign="top">🥁 <b>Follows live playing</b><br>No metronome needed: the score follows the beat of the recording, even when it speeds up or slows down.</td>
+  </tr>
+  <tr>
+    <td valign="top">🧩 <b>The easiest capo, found for you</b><br>Tabscribe suggests the capo position with the simplest shapes. Change capo, transpose or tuning (Drop D, half step down, Open G, DADGAD) in one click.</td>
+    <td valign="top">🖐️ <b>A fingering you can play</b><br>One note per string, open strings when they help, no impossible stretches.</td>
+  </tr>
+  <tr>
+    <td valign="top">🎯 <b>Pick your level</b><br>Original, Intermediate or Beginner: the same song, simplified when you need it.</td>
+    <td valign="top">🎹 <b>Falling-notes piano roll</b><br>See every note coming, and scroll over it to scrub through the song.</td>
+  </tr>
+  <tr>
+    <td valign="top">🔊 <b>Real guitar sounds</b><br>Playback with sampled steel-string or nylon guitars. Your choice is remembered.</td>
+    <td valign="top">🐢 <b>Slow it down</b><br>Speed control, metronome and volume, on the transcription or on the original.</td>
+  </tr>
+  <tr>
+    <td valign="top">📤 <b>Export everywhere</b><br>Guitar Pro (.gp5) for MuseScore, TuxGuitar and Guitar Pro, MIDI (quantised or as played), and PDF.</td>
+    <td valign="top">✏️ <b>Edit, coming soon</b><br>Fix a note right in the score. Star the repo to hear about it first.</td>
+  </tr>
+</table>
+
+<a id="privacy"></a>
+
+## 🔒 Privacy
+
+- 🏠 **Local-first:** projects, recordings and settings live in `~/Library/Application Support/Tabscribe`, on your Mac.
+- 🧠 **On-device AI:** every model runs on your Mac (Apple silicon GPU when it helps). No recording is ever uploaded.
+- 📦 **Downloads from this repository:** the engine and models come from this project's GitHub releases, checked file by file against their SHA-256. The optional MuScriptor model and the guitar-isolation weights come from Hugging Face.
+- 🚫 **No account, no telemetry, no analytics.** There is no Tabscribe server.
+
+<a id="make-it-yours"></a>
+
+## 🛠️ Make it yours
+
+<details>
+<summary>🔬 <b>How it works, and how accurate it is</b></summary>
+
+<br>
+
+Every stage of the pipeline, the models behind it, the benchmarks (note, rhythm and chord accuracy on reference songs, beat tracking on live takes) and the licence of every model and sound are in [`docs/TECHNICAL.md`](docs/TECHNICAL.md).
+
+</details>
+
+<details>
+<summary>🎛️ <b>Choose the transcription engine</b></summary>
+
+<br>
+
+In a project, *Re-transcribe* lets you pick the engine: the full vote (default), Basic Pitch alone (fastest), or MuScriptor. Add MuScriptor in *Settings → Components*; its weights are non-commercial (CC BY-NC 4.0) and need a free Hugging Face account.
+
+</details>
+
+<details>
+<summary>🧑‍💻 <b>Run from source</b></summary>
+
+<br>
+
+You need an Apple-silicon Mac, Python 3.11, Node 22 and ffmpeg.
 
 ```bash
-./run.sh          # first run creates .venv, builds the UI → http://127.0.0.1:8765
+git clone --recurse-submodules https://github.com/AdamPomposelli/tabscribe
+cd tabscribe
+./run.sh          # creates .venv, builds the UI → http://127.0.0.1:8765
 ```
 
-**Desktop app (macOS, Apple silicon):** download `Tabscribe-x.y.z-arm64.dmg` from the
-[Releases](../../releases) page, drag Tabscribe to Applications and open it. The first launch shows
-what it needs on disk (engine, AI models, optional guitar isolation / MuScriptor), downloads it from this
-repository's release with progress bars, verifies every file (SHA-256) and then works offline.
-Nothing else to install: no Homebrew, Python or terminal. Settings → Components checks, repairs,
-adds or removes components later. Data lives in `~/Library/Application Support/Tabscribe`.
+| | |
+|---|---|
+| **`backend/tabscribe/`** · Python | The engine: isolation, beat tracking, the transcription vote, chords, fingering, Guitar Pro and MIDI export. |
+| **`frontend/`** · TypeScript + React | The interface, with alphaTab for the score. |
+| **`desktop/`** · Electron | The Mac app and its one-click installer. |
+| **`release/`** | Builds the self-contained runtime and the release assets. See [`docs/RELEASING.md`](docs/RELEASING.md). |
+| **`bench/`** | The benchmarks the pipeline was tuned with. |
+| **`brand/`** | Logo, README assets and the demo video source. |
 
-From a checkout: `cd desktop && npm install && npm start` runs the app on this checkout's `.venv`
-(`npm run start:managed` tries the installer instead).
+</details>
 
-Dev mode: backend `uvicorn tabscribe.server:app --app-dir backend --port 8765 --reload`
-and `npm --prefix frontend run dev` (http://127.0.0.1:5173, proxies `/api`).
+<a id="contributing"></a>
 
-## Pipeline
+## 🤝 Contributing
 
-| Stage | Model / method | Taken from |
-|---|---|---|
-| Decode | ffmpeg → 44.1 kHz PCM | all |
-| Guitar isolation (optional, songs with vocals or a band) | **BS-RoFormer SW** 6-stem model, guitar stem (9.3 s windows, 2× overlap, MPS/CUDA); Demucs **htdemucs_6s** as fallback. Picked by blind listening against htdemucs_6s, MelBand-RoFormer guitar and their ensemble (`guitar-extract-research/REPORT.md`) | python-audio-separator (inference), autotab-rust (6-stem idea), autotabber (normalisation) |
-| Transcription | **Majority vote of 7 models**: Tsumugi default / guitar / guitar v1.5 / other v1.5, Transkun v2, MuScriptor medium, Basic Pitch. Onsets from MuScriptor (best rhythm), offsets from Transkun (best durations) | all repos + Transkun, Tsumugi (via voidtrackr) |
-| Cleanup | overtone suppression, re-attack merge, relative-level gate, cut-in removal | new (tuned with mir_eval) + autotabber ideas |
-| Beats & downbeats | **Beat This!** (CPJKU, ISMIR 2024) + madmom **DBN** post-processing, then **onset-guided correction** (`beatfix.py`, dynamic programme over note attacks with a smooth-tempo penalty) for live / no-metronome playing, gap repair, tempo map | chosen among 7 trackers (beat_this ± DBN, beat_this_live, madmom, md_beat_this, wavebeat, Mixxx) on a tempo-warped stress test — see below |
-| Quantization | beat-relative 16ths / 8th-triplets, chosen per beat | new |
-| Fingering | **Open-Fret** (Fretting-Transformer T5 trained on ~188k Guitar Pro tracks, anchored decoding → per-note position priors) + **tab-labeler v3** CNN emission + beam search: one note per string, held-string awareness, span cap, span/move costs, open-string preference | autotab-rust (model), riffforge (exact DP), fixes for tab-agent-pro's chord bug |
-| Harmony | Krumhansl key + attack-weighted chord templates (maj7/9/13/sus…) per bar on MuScriptor's full output | new |
-| Engraving | 2 voices, ties across bars, dotted/tuplet durations, chord diagrams, **rolled chords** (3+ staggered attacks ≤130 ms apart, one direction, ringing together → one chord with an arpeggio ↑/↓ sign; MIDI keeps the real stagger) | autotab-rust GP5 ideas |
-| Output | Guitar Pro 5 (rendered by alphaTab), MIDI (score + performance), JSON | |
+Tabscribe gets better every time someone tells us where a tab went wrong. No contribution is too small.
 
-## Accuracy vs Songscription (two reference songs)
+- 🐛 **A tab came out wrong?** [Open an issue](https://github.com/AdamPomposelli/tabscribe/issues/new) with the song (or a short clip) and what you expected.
+- 💡 **Got an idea?** Pitch it in an [issue](https://github.com/AdamPomposelli/tabscribe/issues).
+- 🛠️ **Ready to code?** Fork, branch, run the benchmarks in `bench/` before and after your change, and open a pull request.
 
-`python bench/full.py` runs the real pipeline on both songs and scores the exported `score.mid`
-(mir_eval, 50 ms onsets) plus chords and rolled chords.
+## ⭐ Like it? Star it
 
-| | Notes F1 | Rhythm F1 | Durations F1 (20 %) | Chords | Meter |
-|---|---|---|---|---|---|
-| YeuEm (30 s) | **0.987** | **0.985** | 0.63 | 13/15 roots | 4/4 auto |
-| hoadanhdanhguitar (83 s) | **0.858** | **0.887** | 0.36 | **79 % roots / 77 % root+quality** (was 52 / 36) | 4/4 auto (was 2/4) |
+A star takes one second and helps the next guitarist find Tabscribe.
 
-What moved the numbers on the second song (each change validated on BOTH songs):
-* onsets from Tsumugi instead of MuScriptor (MuScriptor drifts ~90 ms on some 5 s chunk edges);
-* chord notes aligned on one onset (60 ms), rolled chords excluded;
-* score MIDI keeps deliberate off-grid attacks (> 35 ms from the grid) instead of snapping them;
-* chords, key and meter from Tsumugi's MIDI-frame beat/chord/key model, spelled in the key (E# in F#, Bb in F);
-* chord boxes = standard playable grips near the hand position (`voicings.py`);
-* engraving: legato upper voice, bass held to the next bass note within the half bar, values that
-  start on their own grid and don't cross the middle of the bar, triplets only when clearly played.
+<p align="center">
+  <a href="https://star-history.com/#AdamPomposelli/tabscribe&Date">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=AdamPomposelli/tabscribe&type=Date&theme=dark">
+      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=AdamPomposelli/tabscribe&type=Date">
+      <img alt="Tabscribe star history" src="https://api.star-history.com/svg?repos=AdamPomposelli/tabscribe&type=Date" width="640">
+    </picture>
+  </a>
+</p>
 
-Known limits: on hoa the reference keeps part of the performance timing and writes rolled chords
-the audio does not always show (rolls agree 6/11); durations remain notation choices.
+## 📄 Licence
 
-## Live performances (tempo drift)
-
-The score is never built on a fixed BPM: every note is placed by interpolating between the
-*tracked* beats, so a drifting tempo is already normalised in the symbolic domain. Time-stretching
-the audio to a constant tempo before transcription was measured and rejected: the stretch
-artefacts cost the transcription 7–12 points of note F1, and re-tracking a stretched file just
-re-uses the first tracker's mistakes. What matters is that the beats are right, so
-`bench/tempo/` simulates live takes (±14–27 % smooth tempo drift, WSOLA, exact time map so the
-Songscription MIDI is warped too) and compares trackers:
-
-| Tracker (8 cases: 2 originals + 6 live) | beat F orig | beat F live | live + onset fix | downbeats | s / min |
-|---|---|---|---|---|---|
-| beat_this (previous) | 0.998 | 0.894 | 0.943 | 0.88 | 2.0 |
-| **beat_this + DBN (now)** | **0.998** | **0.949** | **0.969** | **1.00** | 3.6 |
-| madmom RNN+DBN (non-commercial models) | 0.994 | 0.965 | 0.962 | 0.99 | 4.7 |
-| md_beat_this (non-commercial) | 0.998 | 0.952 | 0.959 | 0.99 | 36.4 |
-| wavebeat | 0.867 | 0.721 | 0.707 | 0.72 | 4.1 |
-| Mixxx (qm-dsp) | 0.394 | 0.360 | 0.516 | 0.58 | 0.3 |
-| beat_this_live (causal) | 0.976 | 0.490 | 0.593 | 0.81 | 6.8 |
-
-Notation F1 (notes written in the right 16th slot) on live takes went from 0.31–0.50 to
-0.66–0.73; originals unchanged (0.75 / 0.79). Downbeats are scored against where the chords change.
-
-## MuScriptor (optional 7th model)
-
-Weights are gated on Hugging Face (CC BY-NC 4.0, non-commercial). Without them the vote uses the
-other 6 models with the same 4-vote threshold, which gives the same note F1 on both reference
-songs (0.975 / 0.857), so the app does not need them. In the desktop app, tick **MuScriptor** in
-Settings → Components: it uses your `hf auth login` token if there is one, otherwise asks for a
-read token, and downloads from Hugging Face (accept the licence on
-https://huggingface.co/MuScriptor/muscriptor-medium first). In a checkout: `hf auth login` once.
-
-## Guitar sounds (playback)
-
-The score plays through a guitar SoundFont you pick under **Guitar sound** in the project panel.
-The choice is saved in `data/prefs.json`, so it survives restarts. The default is the
-community favourite among free, properly licensed guitar SoundFonts:
-
-| Sound | Source | Licence |
-|---|---|---|
-| Steel-string acoustic (default) | FreePats "FSS Steel String Guitar" (Seagull samples by FlameStudios) | GPL-3.0 + FreePats exception |
-| Spanish classical (nylon) | FreePats "Spanish Classical Guitar" | CC0 |
-| GeneralUser GS steel / nylon | GeneralUser GS 2.0 (S. Christian Collins) | free, incl. commercial |
-| Sonivox (classic) | Sonivox EAS GM bank (the previous sound) | Android AOSP |
-
-Each file in `frontend/public/soundfont/guitars/` holds only the guitar preset at program 24
-(the program the scores use). They were built with `tools/sf2_extract.py`, with levels matched
-(`--gain`, `--preset-att`). Licences are in `frontend/public/soundfont/guitars/licenses/`.
-Rips of commercial libraries (Pianoteq, RealGuitar, GarageBand...) were left out on purpose.
-
-## Licences of bundled/downloaded models
-
-Basic Pitch (Apache-2.0), Open-Fret code + weights (MIT, `vendor/open_fret_pkg`, `mylonasc/open-fret-tab`), Transkun (MIT), Tsumugi (MIT; vendored in `vendor/tsumugi`, own venv `.venv-tsumugi` with torch 2.13), Beat This! weights (MIT, `safe-models/beat-this-final0`
-safetensors mirror), tab-labeler (CC BY 4.0), Demucs (MIT), MuScriptor weights (CC BY-NC 4.0).
-BS-RoFormer SW: model code vendored in `backend/tabscribe/roformer` from python-audio-separator (MIT) with
-rotary-embedding-torch 0.6.5 (MIT); the weights (`enerjazzer/BS-ROFO-SW-Fixed`, a mirror of jarredou's checkpoint)
-carry **no stated licence** (Hugging Face card: "unknown"; one third-party list says CC BY-NC-SA 4.0), so they are
-not re-hosted: the app downloads them from Hugging Face. Check this before any commercial distribution.
-
-## Releasing (maintainers)
-
-Two GitHub releases per version: `assets-YYYY.MM.N` holds the heavy files the app downloads on
-first run (re-used across app versions while they don't change), `vX.Y.Z` holds the DMG.
-Requires an Apple-silicon Mac, Xcode command line tools, `gh` logged in, ~10 GB free.
-
-1. **Build the assets** (python-build-standalone CPython 3.11 + every package of
-   `release/requirements-macos-arm64.lock`, a static LGPL ffmpeg compiled from source, the model
-   weights, then `manifest.json` with size + sha256 + licence of every file):
-   ```bash
-   python3 release/build_assets.py --repo AdamPomposelli/tabscribe --tag assets-2026.11.1
-   ```
-   Outputs `release/out/<tag>/` and copies the manifest to `desktop/manifest.json` (it ships in the
-   app). The runtime is smoke-tested (imports, ffmpeg) and checked for links outside itself.
-   `--skip-runtime` reuses the last runtime; `--host-muscriptor` re-hosts the gated weights (only if
-   their licence allows it for you).
-2. **Test the release locally** before uploading anything (GitHub-like server with redirects and
-   Range; `--rate 30` slows it down to watch progress, `--drop-after 50` cuts every file once):
-   ```bash
-   python3 release/serve_local.py assets-2026.11.1 --drop-after 50
-   ```
-   ```bash
-   npm --prefix desktop run pack && TABSCRIBE_ASSETS_URL=http://127.0.0.1:8899/download/ TABSCRIBE_DATA_DIR=/tmp/ts-test desktop/dist/mac-arm64/Tabscribe.app/Contents/MacOS/Tabscribe
-   ```
-   `npm --prefix desktop test` runs the installer tests (resume, checksum, repair, disk space).
-3. **Upload the assets** (creates a draft release, uploads, checks sizes, then asks before publishing;
-   the repository must be public): `release/publish_assets.sh assets-2026.11.1`
-4. **Build the DMG**: `npm --prefix desktop run dist` → `desktop/dist/Tabscribe-0.1.0-arm64.dmg`.
-   - With a *Developer ID Application* certificate in the keychain, electron-builder signs with
-     it (hardened runtime) and, when `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`
-     (or `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`) are set, notarizes it.
-   - Without one, the app is signed ad hoc: macOS says it "cannot verify" Tabscribe; users open it
-     with right-click → Open, or System Settings → Privacy & Security → Open Anyway.
-5. **Publish the app**: `release/publish_app.sh` (draft release `vX.Y.Z` with the DMG; publish it on GitHub).
-
-Bump `version` in `desktop/package.json` for each app release. Rebuild the assets (new tag) only
-when the lock file, a model or ffmpeg changes; unchanged components are not re-downloaded by users
-who already have them (the installer compares checksums, not tags).
+**MIT** for Tabscribe's own code. Take it, change it, ship it! See [LICENSE](LICENSE).
+The models and guitar sounds it uses keep their own licences, listed in [`docs/TECHNICAL.md`](docs/TECHNICAL.md); a few of them (MuScriptor, the isolation weights) are for non-commercial use.

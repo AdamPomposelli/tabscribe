@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tabscribe demo</title>
+<script src="assets/gsap.min.js"></script>
+<style>
+@font-face { font-family: "PJS"; font-weight: 500; src: url(assets/fonts/PlusJakartaSans-500.woff2) format("woff2"); }
+@font-face { font-family: "PJS"; font-weight: 700; src: url(assets/fonts/PlusJakartaSans-700.woff2) format("woff2"); }
+@font-face { font-family: "PJS"; font-weight: 800; src: url(assets/fonts/PlusJakartaSans-800.woff2) format("woff2"); }
+@font-face { font-family: "JBM"; font-weight: 400; src: url(assets/fonts/JetBrainsMono-400.woff2) format("woff2"); }
+:root { --ink: #060908; --teal: #19C08F; --teal-d: #0A7C62; --teal-l: #7BE8C6; }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--ink); color: #fff; font-family: "PJS", sans-serif; }
+#root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--ink); }
+.layer { position: absolute; inset: 0; }
+.scene { position: absolute; inset: 0; overflow: hidden; }
+.wrap { position: absolute; inset: 0; }
+
+#dots { background-image: radial-gradient(rgba(255,255,255,.13) 1.6px, transparent 1.8px); background-size: 48px 48px; opacity: .5; }
+#glow { background: radial-gradient(ellipse 46% 40% at 50% 46%, rgba(25,192,143,.38), rgba(25,192,143,.09) 55%, transparent 75%); }
+#vignette { background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.75) 100%); pointer-events: none; z-index: 40; }
+#grain { z-index: 41; opacity: .06; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+#flash { z-index: 45; background: #fff; opacity: 0; }
+
+#hud { z-index: 50; mix-blend-mode: difference; font: 400 24px/1 "JBM", monospace; letter-spacing: .18em; color: #fff; text-transform: uppercase; }
+.crop { position: absolute; width: 44px; height: 44px; border: 0 solid rgba(255,255,255,.75); }
+.crop.tl { top: 36px; left: 36px; border-top-width: 2px; border-left-width: 2px; }
+.crop.tr { top: 36px; right: 36px; border-top-width: 2px; border-right-width: 2px; }
+.crop.bl { bottom: 36px; left: 36px; border-bottom-width: 2px; border-left-width: 2px; }
+.crop.br { bottom: 36px; right: 36px; border-bottom-width: 2px; border-right-width: 2px; }
+#hud-chapter { position: absolute; bottom: 52px; right: 104px; }
+#ruler { position: absolute; bottom: 60px; left: 104px; width: 560px; height: 4px; display: flex; gap: 10px; }
+#ruler span { flex: 1; background: rgba(255,255,255,.25); position: relative; overflow: hidden; }
+#ruler span b { position: absolute; inset: 0; background: #fff; transform-origin: 0 50%; transform: scaleX(0); }
+
+/* ── The real app: full-window captures (1920×1080 CSS px, shot at 2×) the camera moves over ── */
+#stage { position: absolute; inset: 0; }
+#camera { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+.plate { position: absolute; inset: 0; background-size: 1920px 1080px; background-repeat: no-repeat; opacity: 0; }
+.plate.on { opacity: 1; }
+#p-trim { background-image: url(captures/onb-trim.png); }
+#p-source { background-image: url(captures/onb-source.png); }
+#p-proc { background-image: url(captures/processing.png); }
+#p-pipe { background-image: url(captures/pipeline.png); }
+#p-score { background-image: url(captures/score.png); }
+#p-orig { background-image: url(captures/original.png); }
+#p-sounds { background-image: url(captures/sounds.png); }
+.ring { position: absolute; border-radius: 14px; border: 3px solid var(--teal); box-shadow: 0 0 0 6px rgba(25,192,143,.18), 0 0 40px rgba(25,192,143,.55); opacity: 0; }
+
+/* Feature titles: centred, the app dimmed and blurred behind them. */
+#veil { position: absolute; inset: 0; background: rgba(6,9,8,.66); opacity: 0; z-index: 9; }
+#titles { position: absolute; inset: 0; z-index: 10; }
+#titles > div { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; opacity: 0; }
+#titles h2 { margin: 0; font: 800 124px/1.02 "PJS"; letter-spacing: -.045em; text-shadow: 0 8px 60px rgba(0,0,0,.8); }
+#titles p { margin: 28px 0 0; font: 500 38px/1.3 "PJS"; color: #D7E2DD; letter-spacing: -.01em; }
+.v { color: var(--teal-l); }
+
+/* ── 100% ── */
+#s4 .wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.big { font: 800 150px/1.02 "PJS"; letter-spacing: -.055em; text-shadow: 0 0 80px rgba(25,192,143,.45); }
+.big .v { margin-right: .18em; }
+#promises { margin-top: 60px; display: flex; gap: 20px; }
+.pill { padding: 20px 32px; border-radius: 999px; font: 700 40px/1 "PJS"; letter-spacing: -.01em; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.14); display: flex; align-items: center; gap: 16px; white-space: nowrap; }
+.pill b { width: 32px; height: 32px; border-radius: 50%; background: var(--teal-d); display: inline-flex; align-items: center; justify-content: center; font-size: 20px; }
+
+/* ── Lockup ── */
+#s5 .wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+#lockup { width: 1000px; height: auto; overflow: visible; }
+#tagline { margin-top: 70px; font: 800 76px/1 "PJS"; letter-spacing: -.03em; display: flex; gap: .28em; }
+#tagline .v { color: var(--teal-l); }
+#subline { margin-top: 34px; font: 500 34px/1.3 "PJS"; color: #C3CEC9; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="tabscribe-demo" data-start="0" data-duration="__END__" data-width="1920" data-height="1080">
+
+  <div id="dots" class="layer clip" data-start="0" data-duration="__END__" data-track-index="0"></div>
+  <div id="glow" class="layer clip" data-start="0" data-duration="__END__" data-track-index="1"></div>
+
+  <!-- 01–07: the real app, one camera -->
+  <div id="s1" class="scene clip" data-start="0" data-duration="__S1_END__" data-track-index="2">
+    <div class="wrap">
+      <div id="stage">
+        <div id="camera">
+          <div id="p-trim" class="plate on"></div>
+          <div id="p-source" class="plate"></div>
+          <div id="p-proc" class="plate"></div>
+          <div id="p-pipe" class="plate"></div>
+          <div id="p-score" class="plate"></div>
+          <div id="p-orig" class="plate"></div>
+          <div id="p-sounds" class="plate"></div>
+          __RINGS__
+        </div>
+      </div>
+      <div id="veil"></div>
+      <div id="titles">
+        <div id="t1"><h2>Any guitar recording.<br><span class="v">Score + tab.</span></h2><p>Drop a song, trim it, and Tabscribe writes it out for you.</p></div>
+        <div id="t2"><h2>The guitar, <span class="v">isolated by AI.</span></h2><p>Vocals, drums and band removed before transcribing.</p></div>
+        <div id="t3"><h2>AI models, <span class="v">all on your Mac.</span></h2><p>Beats, notes, chords and fingering. Nothing leaves your computer.</p></div>
+        <div id="t4"><h2>Score, tab <span class="v">and chord boxes.</span></h2><p>Standard notation and tablature, ready to play.</p></div>
+        <div id="t5"><h2>Synced to <span class="v">the recording.</span></h2><p>Switch between the transcription and the original without stopping.</p></div>
+        <div id="t6"><h2>The easiest capo, <span class="v">found for you.</span></h2><p>Tabscribe picks the position with the simplest shapes.</p></div>
+        <div id="t7"><h2>Real <span class="v">guitar sounds.</span></h2><p>Sampled steel-string and nylon guitars for playback.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 08 · 100% -->
+  <div id="s4" class="scene clip" data-start="__S4__" data-duration="3.0" data-track-index="5">
+    <div class="wrap">
+      <div class="big" id="b1"><span class="v">100%</span>free.</div>
+      <div class="big" id="b2"><span class="v">100%</span>on your Mac.</div>
+      <div class="big" id="b3"><span class="v">100%</span>open source.</div>
+      <div id="promises">
+        <div class="pill"><b>✓</b>No account</div>
+        <div class="pill"><b>✓</b>Works offline</div>
+        <div class="pill"><b>✓</b>Guitar Pro, MIDI, PDF</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lockup -->
+  <div id="s5" class="scene clip" data-start="__S5__" data-duration="__LOCKUP_DUR__" data-track-index="6">
+    <div class="wrap">
+      __LOCKUP__
+      <div id="tagline"><span>Stop transcribing.</span><span class="v">Start playing.</span></div>
+      <div id="subline">AI writes the score and tab from any recording, so your time goes to playing.</div>
+    </div>
+  </div>
+
+  <div id="vignette" class="layer clip" data-start="0" data-duration="__END__" data-track-index="8"></div>
+  <div id="grain" class="layer clip" data-start="0" data-duration="__END__" data-track-index="9"></div>
+  <div id="flash" class="layer clip" data-start="0" data-duration="__END__" data-track-index="10"></div>
+
+  <div id="hud" class="layer clip" data-start="0" data-duration="__END__" data-track-index="12">
+    <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
+    <div id="ruler">__RULER__</div>
+    <div id="hud-chapter">01 · Recording</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const END = __END__, S4 = __S4__, S5 = __S5__;
+  const W = 1920, H = 1080;
+  // Where things are in the captures, in CSS px (from capture.mjs).
+  const BOX = __BOXES__;
+  const tl = gsap.timeline({ paused: true });
+
+  const cam = (px, py, s, sx = W / 2, sy = H / 2) => ({ x: sx - px * s, y: sy - py * s, scale: s });
+  const mid = (b) => [b.x + b.width / 2, b.y + b.height / 2];
+  const fit = (b, margin = 1.35, max = 2) => Math.min(max, W / (b.width * margin), H / (b.height * margin));
+  const on = (b, margin, max) => { const [x, y] = mid(b); return cam(x, y, fit(b, margin, max)); };
+  const WIDE = cam(W / 2, H / 2, 1);
+
+  const title = (id, at, hold) => {
+    tl.to("#camera", { filter: "blur(14px)", duration: 0.35, ease: "power2.out" }, at);
+    tl.to("#veil", { opacity: 1, duration: 0.35, ease: "power2.out" }, at);
+    tl.set(id, { opacity: 1 }, at + 0.05);
+    tl.from(`${id} h2`, { scale: 1.25, opacity: 0, filter: "blur(12px)", duration: 0.5, ease: "expo.out" }, at + 0.05);
+    tl.from(`${id} p`, { y: 24, opacity: 0, duration: 0.4, ease: "power2.out" }, at + 0.3);
+    tl.to(id, { opacity: 0, scale: 0.94, filter: "blur(10px)", duration: 0.3, ease: "power2.in" }, at + hold);
+    tl.set(id, { opacity: 0 }, at + hold + 0.3);
+    tl.to("#camera", { filter: "blur(0px)", duration: 0.4, ease: "power2.out" }, at + hold + 0.1);
+    tl.to("#veil", { opacity: 0, duration: 0.4, ease: "power2.out" }, at + hold + 0.1);
+  };
+  const plate = (id, at, d = 0.05) => {
+    tl.to(`.plate:not(${id})`, { opacity: 0, duration: d, ease: "none" }, at);
+    tl.to(id, { opacity: 1, duration: d, ease: "none" }, at);
+  };
+  const ring = (id, at, out) => {
+    tl.fromTo(id, { opacity: 0, scale: 1.25 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.8)" }, at);
+    tl.to(id, { opacity: 0, duration: 0.25, ease: "power1.in" }, out);
+  };
+
+  // ── 01 · ANY RECORDING → trim ──
+  tl.set("#camera", { ...WIDE, scale: 1.04, x: -38, y: -22 }, 0);
+  tl.from("#stage", { opacity: 0, duration: 0.6, ease: "power2.out" }, 0);
+  title("#t1", 0.05, 1.6);
+  tl.to("#camera", { ...on(BOX.trim, 1.08, 1.6), duration: 0.9, ease: "power3.inOut" }, 1.95);
+  tl.to("#camera", { x: on(BOX.trim, 1.08, 1.6).x - 50, duration: 1.0, ease: "none" }, 2.85);
+
+  // ── 02 · ISOLATION ──
+  title("#t2", 3.9, 1.3);
+  plate("#p-source", 4.1);
+  tl.set("#camera", on(BOX.cards, 1.15, 1.7), 4.2);
+  tl.to("#camera", { ...on(BOX.bandCard, 1.3, 1.9), duration: 0.8, ease: "power3.inOut" }, 5.35);
+  ring("#r-band", 5.9, 6.95);
+
+  // ── 03 · AI ON YOUR MAC: the real job, then the pipeline ──
+  title("#t3", 7.0, 1.3);
+  plate("#p-proc", 7.2);
+  tl.set("#camera", on(BOX.proc, 1.15, 1.9), 7.3);
+  ring("#r-proc", 8.5, 9.4);
+  plate("#p-pipe", 9.45, 0.25);
+  tl.set("#camera", on(BOX.pipeline, 1.06, 1.8), 9.45);
+  tl.to("#camera", { x: on(BOX.pipeline, 1.06, 1.8).x - 40, duration: 1.0, ease: "none" }, 9.7);
+  ring("#r-pipe", 9.8, 10.65);
+
+  // ── 04 · SCORE + TAB ──
+  title("#t4", 10.7, 1.3);
+  plate("#p-score", 10.9);
+  tl.set("#camera", on(BOX.firstSystem, 1.05, 1.9), 11.0);
+  tl.to("#camera", { x: on(BOX.firstSystem, 1.05, 1.9).x - 260, duration: 1.4, ease: "none" }, 12.05);
+
+  // ── 05 · SYNCED TO THE RECORDING ──
+  title("#t5", 13.45, 1.3);
+  plate("#p-orig", 13.65);
+  // the transport sits at the very top of the window: keep it near the top of the frame
+  { const [tx, ty] = mid(BOX.transport); tl.set("#camera", cam(tx, ty, 1.7, W / 2, 140), 13.75); }
+  ring("#r-seg", 14.85, 15.6);
+  tl.to("#camera", { ...on(BOX.roll, 1.02, 1.5), duration: 0.8, ease: "power3.inOut" }, 15.6);
+
+  // ── 06 · CAPO ──
+  title("#t6", 16.5, 1.25);
+  plate("#p-score", 16.7);
+  tl.set("#camera", on(BOX.capoArea, 1.1, 1.9), 16.8);
+  ring("#r-capo", 17.85, 18.75);
+
+  // ── 07 · SOUNDS ──
+  title("#t7", 18.8, 1.2);
+  plate("#p-sounds", 19.0);
+  tl.set("#camera", on(BOX.soundArea, 1.12, 1.9), 19.1);
+  ring("#r-sound", 20.1, 21.0);
+  tl.to("#s1 .wrap", { y: -160, filter: "blur(30px)", duration: 0.3, ease: "power2.in" }, S4 - 0.3);
+  tl.set("#s1 .wrap", { opacity: 0 }, S4);
+
+  // ── 08 · 100% ──
+  tl.fromTo("#s4 .wrap", { y: 160, filter: "blur(30px)" }, { y: 0, filter: "blur(0px)", duration: 0.5, ease: "power2.out" }, S4);
+  tl.from("#b1", { scale: 2.6, opacity: 0, duration: 0.45, ease: "expo.out" }, S4);
+  tl.from("#b2", { scale: 2.6, opacity: 0, duration: 0.45, ease: "expo.out" }, S4 + 0.35);
+  tl.from("#b3", { scale: 2.6, opacity: 0, duration: 0.45, ease: "expo.out" }, S4 + 0.7);
+  tl.from("#promises .pill", { y: 60, scale: 0.7, opacity: 0, duration: 0.4, ease: "back.out(1.7)", stagger: 0.18 }, S4 + 1.2);
+  tl.to("#s4 .wrap", { scale: 1.08, opacity: 0, filter: "blur(24px)", duration: 0.3, ease: "power2.in" }, S5 - 0.3);
+  tl.set("#s4 .wrap", { opacity: 0 }, S5);
+
+  // ── Lockup: the icon drops, its frets drift like a waveform ──
+  tl.from("#lk-name", { y: 70, opacity: 0, duration: 0.6, ease: "expo.out" }, S5 + 0.05);
+  tl.from("#lk-icon", { y: -900, rotation: -16, opacity: 0, transformOrigin: "50% 100%", duration: 0.5, ease: "power2.in" }, S5 + 0.2);
+  tl.to("#lk-icon", { scaleY: 0.82, scaleX: 1.08, transformOrigin: "50% 100%", duration: 0.08, ease: "power2.out" }, S5 + 0.7);
+  tl.to("#lk-icon", { scaleY: 1, scaleX: 1, transformOrigin: "50% 100%", duration: 0.5, ease: "elastic.out(1, 0.4)" }, S5 + 0.78);
+  document.querySelectorAll("#lk-frets rect").forEach((r, i) => {
+    tl.to(r, { x: (i % 2 ? -1.4 : 1.4), duration: 0.9, ease: "sine.inOut", yoyo: true, repeat: 3 }, S5 + 0.9 + i * 0.12);
+  });
+  tl.from("#tagline span", { y: 40, opacity: 0, duration: 0.45, ease: "expo.out", stagger: 0.16 }, S5 + 0.95);
+  tl.from("#subline", { opacity: 0, y: 16, duration: 0.6, ease: "power2.out" }, S5 + 1.45);
+
+  // ── Per-frame driver ──
+  const segs = [...document.querySelectorAll("#ruler b")];
+  const chapter = document.getElementById("hud-chapter");
+  const dots = document.getElementById("dots");
+  const flash = document.getElementById("flash");
+  const glow = document.getElementById("glow");
+  const LABELS = [[0, "01 · Recording"], [3.9, "02 · Isolation"], [7.0, "03 · On your Mac"], [10.7, "04 · Score + tab"], [13.45, "05 · Synced"], [16.5, "06 · Capo"], [18.8, "07 · Sounds"], [S4, "08 · Free"], [S5, "Tabscribe"]];
+  const SEG = [...LABELS.map((l) => l[0]), END];
+  const clamp = (v) => Math.max(0, Math.min(1, v));
+  function frame(t) {
+    let label = LABELS[0][1];
+    for (const [s, l] of LABELS) if (t >= s) label = l;
+    chapter.textContent = label;
+    segs.forEach((b, i) => { b.style.transform = "scaleX(" + clamp((t - SEG[i]) / (SEG[i + 1] - SEG[i])) + ")"; });
+    dots.style.backgroundPosition = "0px " + (-t * 22).toFixed(1) + "px";
+    let f = 0;
+    for (const c of [S5]) { const q = (t - c) / 0.2; if (q >= 0 && q <= 1) f = 0.8 * (1 - q); }
+    flash.style.opacity = f;
+    glow.style.opacity = t < S4 ? 0.35 : 1;
+    glow.style.transform = "scale(" + (1 + 0.04 * Math.sin(t * 1.4)) + ")";
+  }
+  const drv = { t: 0 };
+  tl.fromTo(drv, { t: 0 }, { t: END, duration: END, ease: "none", onUpdate: () => frame(drv.t) }, 0);
+  frame(0);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines["tabscribe-demo"] = tl;
+})();
+</script>
+</body>
+</html>
