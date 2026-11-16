@@ -1,7 +1,7 @@
 {
   "name": "tabscribe-desktop",
   "productName": "Tabscribe",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tabscribe — audio to guitar tab, running locally",
   "main": "main.js",
   "private": true,
