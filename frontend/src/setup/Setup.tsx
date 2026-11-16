@@ -18,6 +18,8 @@ export default function Setup() {
   const [verify, setVerify] = useState<VerifyResult | null>(null)
   const [verifying, setVerifying] = useState<string | null>(null)
   const [justFinished, setJustFinished] = useState(false)
+  const [confirmAll, setConfirmAll] = useState(false)
+  const [removingAll, setRemovingAll] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!setupBridge) return
@@ -172,6 +174,19 @@ export default function Setup() {
             )}
             {justFinished && !error && <div className="setup-msg ok"><CheckCircle2 size={15} /> {mode === 'first-run' ? 'Everything is installed. Opening Tabscribe…' : 'Done.'}</div>}
             {verifying && <div className="setup-msg"><Loader2 size={14} className="spin" /> Checking {verifying}</div>}
+            {confirmAll && (
+              <div className="setup-msg error confirm-all">
+                <AlertTriangle size={15} />
+                <span>Uninstall the engine and every AI model ({bytes(installedSize)})? Your projects and settings stay. You can reinstall from this screen anytime.</span>
+                <span className="confirm-btns">
+                  <button className="btn-ghost" disabled={removingAll} onClick={() => setConfirmAll(false)}>Cancel</button>
+                  <button className="btn-danger" disabled={removingAll} onClick={async () => {
+                    setRemovingAll(true); setError(null)
+                    try { await bridge.removeAll() } catch (e) { setError(String((e as Error).message || e)); setRemovingAll(false); setConfirmAll(false); refresh() }
+                  }}>{removingAll ? <><Loader2 size={14} className="spin" /> Uninstalling…</> : <><Trash2 size={14} /> Uninstall all</>}</button>
+                </span>
+              </div>
+            )}
             {verify && !verifying && repairIds.length === 0 && missingRequired.length === 0 && <div className="setup-msg ok"><ShieldCheck size={15} /> All installed components are intact.</div>}
 
             <div className="setup-actions">
@@ -179,6 +194,9 @@ export default function Setup() {
                 <div className="left-actions">
                   <button className="btn-ghost" onClick={() => bridge.reveal()}><FolderOpen size={14} /> Show files</button>
                   <button className="btn-ghost" disabled={!!verifying} onClick={runVerify}><ShieldCheck size={14} /> Check installation</button>
+                  {installedSize > 0 && (
+                    <button className="btn-ghost danger" disabled={confirmAll} onClick={() => { setConfirmAll(true); setJustFinished(false); setVerify(null) }}><Trash2 size={14} /> Uninstall all models</button>
+                  )}
                 </div>
               )}
               {repairIds.length > 0 && (

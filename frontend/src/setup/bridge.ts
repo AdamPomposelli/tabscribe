@@ -22,6 +22,7 @@ export type SetupBridge = {
   cancel: () => Promise<void>
   verify: () => Promise<VerifyResult>
   remove: (id: string) => Promise<void>
+  removeAll: () => Promise<void>
   launch: () => Promise<void>
   open: () => Promise<void>
   reveal: () => Promise<void>

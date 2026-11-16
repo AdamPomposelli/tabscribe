@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('tabscribe', {
     cancel: () => ipcRenderer.invoke('setup:cancel'),
     verify: () => ipcRenderer.invoke('setup:verify'),
     remove: id => ipcRenderer.invoke('setup:remove', id),
+    removeAll: () => ipcRenderer.invoke('setup:remove-all'),
     launch: () => ipcRenderer.invoke('setup:launch'),
     open: () => ipcRenderer.invoke('setup:open'),
     reveal: () => ipcRenderer.invoke('setup:reveal'),

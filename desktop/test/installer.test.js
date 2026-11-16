@@ -112,3 +112,21 @@ test('refuses to start without enough disk space', async () => {
   const inst = new Installer({ manifest: big, home })
   await assert.rejects(inst.install(['extra']), /Not enough disk space/)
 })
+
+test('uninstall all removes the engine, models, downloads and caches, keeps projects and logs', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ts-home-'))
+  const manifest = { version: 't', base_url: 'http://127.0.0.1/', components: [
+    { id: 'runtime', name: 'Runtime', required: true, kind: 'archive', dest: 'runtime', files: [{ name: 'rt.tar.xz', size: 1, sha256: 'x' }], download_size: 1, installed_size: 1 },
+    { id: 'models', name: 'Models', required: true, kind: 'files', files: [{ name: 'a.bin', size: 1, sha256: 'y', dest: 'models/x/a.bin' }], download_size: 1, installed_size: 1 },
+  ] }
+  for (const d of ['runtime/bin', 'models/x', 'downloads', 'cache/huggingface', 'data/projects/p1', 'logs']) fs.mkdirSync(path.join(home, d), { recursive: true })
+  fs.writeFileSync(path.join(home, 'models/x/a.bin'), 'a')
+  fs.writeFileSync(path.join(home, 'data/projects/p1/project.json'), '{}')
+  fs.writeFileSync(path.join(home, 'installed.json'), JSON.stringify({ components: { runtime: {}, models: {} } }))
+  const inst = new Installer({ manifest, home })
+  await inst.removeAll()
+  assert.deepStrictEqual(fs.readdirSync(home).sort(), ['data', 'logs'])
+  assert.ok(fs.existsSync(path.join(home, 'data/projects/p1/project.json')))
+  assert.strictEqual(inst.status().ready, false)
+  fs.rmSync(home, { recursive: true, force: true })
+})

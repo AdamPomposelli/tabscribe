@@ -39,6 +39,7 @@ export function mockBridge(): SetupBridge {
     cancel: async () => { cancel = true },
     verify: async () => Object.fromEntries(comps.map(c => [c.id, { ok: c.id !== 'models', installed: c.installed, problems: c.id === 'models' && c.installed ? ['models/tsumugi/best_model.pth: checksum mismatch'] : [] }])),
     remove: async id => { const c = comps.find(x => x.id === id); if (c) c.installed = false },
+    removeAll: async () => { comps.forEach(c => { c.installed = false; c.partial = 0 }); location.search = '?mock&mode=first-run' },
     launch: async () => { location.href = '/' },
     open: async () => { location.href = '/setup.html?mock&mode=manage' },
     reveal: async () => {}, logs: async () => {},

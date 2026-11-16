@@ -193,6 +193,7 @@ handle('setup:install', async (e, { ids, hfToken, force }) => {
 handle('setup:cancel', () => installer.cancel())
 handle('setup:verify', async e => installer.verify((id, file) => { if (!e.sender.isDestroyed()) e.sender.send('setup:verify-step', { id, file }) }))
 handle('setup:remove', (_e, id) => installer.remove(id))
+handle('setup:remove-all', async () => { await stopBackend(); await installer.removeAll(); await showSetup('first-run') })
 handle('setup:launch', async () => {
   if (backend) { await win.loadURL(`http://127.0.0.1:${port}/`); return }
   await openApp()

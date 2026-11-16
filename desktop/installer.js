@@ -312,6 +312,21 @@ class Installer extends EventEmitter {
       rmQuiet(this.partPath(f)); rmQuiet(this.partPath(f) + '.ok')
     }
   }
+
+  /** Uninstall everything: the engine, every model, partial downloads and model caches.
+   *  Projects (data/), settings and logs stay. The app goes back to the first-run setup. */
+  async removeAll() {
+    if (this.busy) throw new Error('An installation is running: pause it first')
+    const dirs = new Set(['models', 'downloads', 'cache'])
+    for (const c of this.manifest.components) {
+      if (c.dest) dirs.add(c.dest)
+      for (const f of c.files) if (f.dest) dirs.add(f.dest.split('/')[0])
+    }
+    dirs.delete('data'); dirs.delete('logs'); dirs.delete('')
+    for (const d of dirs) await fsp.rm(path.join(this.home, d), { recursive: true, force: true })
+    rmQuiet(path.join(this.home, RECEIPTS))
+    this.lastProgress = null
+  }
 }
 
 // ------------------------------------------------------------------ helpers

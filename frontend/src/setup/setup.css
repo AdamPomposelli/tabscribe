@@ -59,3 +59,9 @@ body { overflow: auto; }
 .bar.big { height: 10px; }
 .bar div { height: 100%; background: linear-gradient(90deg, var(--accent-strong), var(--accent-text)); border-radius: 99px; transition: width .25s linear; }
 @media (max-width: 560px) { .setup { padding: 48px 16px 24px; } .comp-top { flex-direction: column; align-items: flex-start; } }
+
+.setup-actions .btn-ghost.danger:hover:not(:disabled) { color: #ff8a8a; }
+.setup-msg.confirm-all { flex-wrap: wrap; }
+.setup-msg.confirm-all > span:first-of-type { flex: 1; min-width: 240px; }
+.confirm-btns { display: flex; gap: 8px; margin-left: auto; }
+.confirm-btns .btn-danger { padding: 7px 14px; font-size: 13.5px; }
