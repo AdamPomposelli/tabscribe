@@ -41,6 +41,9 @@ PBS_SHA256 = "f31751f4a8483f5ac7cd77ad83f8dfb80d9f2a7245bff1585e27516c777fb46f"
 # packages of the macOS lock that don't exist / aren't needed on Windows
 # (basic-pitch uses onnxruntime there instead of Core ML; uvicorn runs on asyncio without uvloop)
 SKIP = {"coremltools", "uvloop"}
+# installed with --no-deps: on Windows basic-pitch 0.4.0 requires TensorFlow (and with it numpy<1.24),
+# but Tabscribe only runs its ONNX model (transcribe.basic_pitch loads nmp.onnx with onnxruntime)
+NO_DEPS = {"basic-pitch"}
 RUNTIME_NAME = "tabscribe-runtime-windows-x64.tar.gz"
 FFMPEG_REPO = "BtbN/FFmpeg-Builds"
 
@@ -50,7 +53,7 @@ def win_lock() -> Path:
     keep = []
     for line in LOCK.read_text().splitlines():
         name = re.split(r"[=<>@ \[]", line.strip(), maxsplit=1)[0].lower()
-        if line.strip() and not line.startswith("#") and name in SKIP:
+        if line.strip() and not line.startswith("#") and name in SKIP | NO_DEPS:
             continue
         keep.append(line)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -84,6 +87,9 @@ def build_runtime() -> Path:
     py = rt / "python.exe"
     env = py_env(rt, build=True)
     run([py, "-m", "pip", "install", "--no-warn-script-location", "-r", win_lock()], env=env)
+    pins = [ln.strip() for ln in LOCK.read_text().splitlines()
+            if re.split(r"[=<>@ \[]", ln.strip(), maxsplit=1)[0].lower() in NO_DEPS]
+    run([py, "-m", "pip", "install", "--no-warn-script-location", "--no-deps", *pins], env=env)
     return rt
 
 
