@@ -181,6 +181,20 @@ select, input { font: inherit; }
 .project-row:hover { background: var(--bg-hover); }
 .row-label { display: flex; justify-content: space-between; align-items: center; }
 
+/* PDF / Print: a print-only render of the whole score (ScoreView printScore), laid out at 1000px
+   and zoomed to the A4 text width (210mm - 2 x 12mm = 186mm = 703px). Hidden on screen. */
+.print-root { position: fixed; left: 0; top: 0; visibility: hidden; pointer-events: none; z-index: -1; background: #fff; color: #111; }
+.print-root .score-title { margin-top: 0; }
+@page { size: A4; margin: 12mm; }
+@media print {
+  /* the app shell is a fixed-height, non-scrolling page: let the print render run over several pages */
+  html:has(body.printing), body.printing { height: auto !important; overflow: visible !important; background: #fff !important; }
+  body.printing { background: #fff !important; margin: 0; }
+  body.printing > *:not(.print-root) { display: none !important; }
+  body.printing .print-root { position: static; visibility: visible; zoom: 0.703; }
+  .print-root .print-systems { position: static !important; width: auto !important; height: auto !important; }
+  .print-system { position: static !important; break-inside: avoid; }
+}
 @media print {
   .sidebar, .panel, .topbar, .pianoroll, .panel-handle { display: none !important; }
   body, .app, .main, .workspace, .score-area, .score-scroll { overflow: visible !important; height: auto !important; display: block !important; background: #fff; }

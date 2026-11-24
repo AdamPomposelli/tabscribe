@@ -226,7 +226,8 @@ export default function App() {
           </div>
           <div className="topbar-right">
             {currentId && <ShareButton id={currentId} title={meta?.title ?? 'score'} disabled={!hasScore} />}
-            {currentId && <DownloadButton id={currentId} title={meta?.title ?? 'score'} disabled={!hasScore} />}
+            {currentId && <DownloadButton id={currentId} title={meta?.title ?? 'score'} disabled={!hasScore}
+              onPrint={() => { scoreRef.current?.print().catch(() => window.print()) }} />}
             <button className="icon-btn boxed" onClick={() => setShowSettings(true)} title="Settings"><Settings size={18} /></button>
           </div>
         </header>
@@ -607,7 +608,7 @@ function usePopover() {
   return { open, setOpen, ref }
 }
 
-function DownloadButton({ id, title, disabled }: { id: string; title: string; disabled: boolean }) {
+function DownloadButton({ id, title, disabled, onPrint }: { id: string; title: string; disabled: boolean; onPrint: () => void }) {
   const { open, setOpen, ref } = usePopover()
   return (
     <div className="dropdown" ref={ref}>
@@ -621,7 +622,7 @@ function DownloadButton({ id, title, disabled }: { id: string; title: string; di
               <div><div>{x.label}</div><div className="muted small">{x.hint}</div></div><Download size={15} />
             </a>
           ))}
-          <button className="menu-item" onClick={() => { setOpen(false); setTimeout(() => window.print(), 50) }}>
+          <button className="menu-item" onClick={() => { setOpen(false); setTimeout(onPrint, 50) }}>
             <div><div>PDF / Print</div><div className="muted small">Score and tablature, page layout</div></div><Printer size={15} />
           </button>
         </div>

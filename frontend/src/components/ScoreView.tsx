@@ -14,6 +14,8 @@ export type ScoreHandle = {
   setMetronome: (on: boolean) => void
   setVolume: (v: number) => void
   seekTime: (seconds: number) => void
+  /** PDF / print: renders the whole score for paper (see printScore) and opens the print dialog. */
+  print: () => Promise<void>
 }
 
 type Props = {
@@ -47,6 +49,137 @@ export function timeToTick(r: Result, t: number) {
   return (i - r.grid.first_beat_index + frac) * r.grid.tpq
 }
 
+/** Engraving settings, shared by the on-screen score and the print render. */
+function scoreSettings(o: { soundFont?: string; scrollElement?: HTMLElement; print?: boolean }) {
+  return {
+    // print: everything drawn up front (no lazy loading), no player, cursor or click handling
+    core: { includeNoteBounds: false, engine: 'svg', fontDirectory: '/font/', enableLazyLoading: !o.print },
+    display: {
+      layoutMode: alphaTab.LayoutMode.Page,
+      staveProfile: alphaTab.StaveProfile.Default,
+      scale: 0.62,
+      stretchForce: 0.6,
+      systemPaddingTop: 76,
+      firstSystemPaddingTop: 44,
+      padding: [24, 6, 30, 6],
+      resources: {
+        mainGlyphColor: '#111111',
+        staffLineColor: '#5c5c5c',
+        barSeparatorColor: '#333333',
+        barNumberColor: '#555555',
+        secondaryGlyphColor: '#111111',
+        effectFont: '15px Arial, Helvetica, sans-serif',
+        tablatureFont: '14px Arial, Helvetica, sans-serif',
+        engravingSettings: {
+          chordDiagramStringSpacing: 3.1,
+          chordDiagramFretSpacing: 3.4,
+          chordDiagramPaddingX: 1,
+          chordDiagramPaddingY: 1,
+        },
+      },
+    },
+    notation: {
+      elements: {
+        scoreTitle: false, scoreSubTitle: false, scoreArtist: false, scoreAlbum: false,
+        scoreWords: false, scoreMusic: false, scoreWordsAndMusic: false, scoreCopyright: false,
+        guitarTuning: false, chordDiagrams: false, effectDynamics: false, effectCapo: false,
+      },
+    },
+    player: {
+      enablePlayer: !o.print,
+      playerMode: alphaTab.PlayerMode.EnabledSynthesizer,
+      enableCursor: !o.print,
+      enableAnimatedBeatCursor: !o.print,
+      enableUserInteraction: !o.print,
+      ...(o.print ? {} : { soundFont: o.soundFont, scrollElement: o.scrollElement }),
+      scrollOffsetY: -80,
+    },
+  } as unknown as alphaTab.Settings
+}
+
+function applyFonts(api: alphaTab.AlphaTabApi) {
+  // chord boxes: alphaTab prints the fret of every string above the box; keep it discreet
+  api.settings.display.resources.elementFonts.set(alphaTab.NotationElement.ChordDiagramFretboardNumbers,
+    new alphaTab.model.Font('Arial', 6.5, alphaTab.model.FontStyle.Plain))
+  // chord symbols and the track label in an upright sans-serif, like printed tab books
+  const sans = (size: number, bold = false) => new alphaTab.model.Font('Helvetica Neue, Arial, sans-serif', size,
+    alphaTab.model.FontStyle.Plain, bold ? alphaTab.model.FontWeight.Bold : alphaTab.model.FontWeight.Regular)
+  const ef = api.settings.display.resources.elementFonts
+  ef.set(alphaTab.NotationElement.EffectChordNames, sans(13))
+  ef.set(alphaTab.NotationElement.TrackNames, sans(12))
+  api.updateSettings()
+}
+
+// Width the print render is laid out at (CSS px). The print stylesheet zooms it to the page width,
+// so paper gets the same engraving (bars per line, glyph sizes) as the screen.
+const PRINT_WIDTH = 1000
+
+/**
+ * Prints the score on its own, instead of printing the live view: the on-screen render is lazy (parts
+ * scrolled out of view aren't drawn yet), carries the playback cursor and sits in a dark app shell.
+ * Here a second alphaTab instance draws the whole score at once into a print-only container; each
+ * system becomes a block in the normal flow, so pages break between systems, never through one.
+ */
+async function printScore(score: alphaTab.model.Score, title: string, capo: number) {
+  const root = document.createElement('div')
+  root.className = 'print-root'
+  root.style.width = `${PRINT_WIDTH}px`
+  const h1 = document.createElement('h1')
+  h1.className = 'score-title'
+  h1.textContent = title
+  const meta = document.createElement('div')
+  meta.className = 'score-meta'
+  meta.innerHTML = '<span class="score-capo"></span><div class="score-credit">Transcribed by <span class="credit-brand">'
+    + '<img src="/logo.svg" alt="" width="14" height="14"> tabscribe</span></div>'
+  meta.querySelector('.score-capo')!.textContent = capo ? `Capo ${capo}` : ''
+  const host = document.createElement('div')
+  root.append(h1, meta, host)
+  document.body.appendChild(root)
+  const api = new alphaTab.AlphaTabApi(host, scoreSettings({ print: true }))
+  try {
+    applyFonts(api)
+    await new Promise<void>((resolve, reject) => {
+      const t = window.setTimeout(() => reject(new Error('print render timed out')), 30000)
+      api.postRenderFinished.on(() => { clearTimeout(t); resolve() })
+      api.renderScore(score, [0])
+    })
+    stripCredit(host)
+    // alphaTab positions each rendered system absolutely; put them back in the normal flow, in
+    // order, inside alphaTab's own surface (its music-font rule is scoped to .at-surface.at)
+    const surface = host.querySelector<HTMLElement>('.at-surface')
+    if (!surface) throw new Error('print render: no surface')
+    // order and size from what alphaTab wrote (style.top, svg height): layout metrics can read 0
+    // in a window that isn't on screen
+    const top = (p: HTMLElement) => parseFloat(p.style.top) || 0
+    const parts = [...surface.children as HTMLCollectionOf<HTMLElement>].sort((a, b) => top(a) - top(b))
+    surface.removeAttribute('style')
+    surface.classList.add('print-systems')
+    for (const p of parts) {
+      // the leftover strip of the removed alphaTab credit is a few px tall: drop it
+      const svg = p.querySelector('svg')
+      if (!svg || (parseFloat(svg.getAttribute('height') ?? '') || 0) < 30) { p.remove(); continue }
+      p.removeAttribute('style')
+      p.classList.add('print-system')
+      surface.appendChild(p)
+    }
+    // the logo must be decoded before the print snapshot (no requestAnimationFrame: it never fires
+    // in a window that isn't visible)
+    await root.querySelector('img')?.decode().catch(() => {})
+    await new Promise(r => setTimeout(r, 30))
+    document.body.classList.add('printing')
+    window.print()
+  } finally {
+    document.body.classList.remove('printing')
+    api.destroy()
+    root.remove()
+  }
+}
+
+/** alphaTab always appends a "rendered by alphaTab" line; drop it from the page. */
+function stripCredit(root: HTMLElement) {
+  root.querySelectorAll('text').forEach(t => { if (t.textContent === 'rendered by alphaTab') t.remove() })
+}
+
 export const ScoreView = forwardRef<ScoreHandle, Props>(function ScoreView(
   { gpUrl, audioUrl, result, title, onRename, onPosition, onPlaying, onReady, soundFont }, ref,
 ) {
@@ -56,6 +189,8 @@ export const ScoreView = forwardRef<ScoreHandle, Props>(function ScoreView(
   const audioRef = useRef<HTMLAudioElement>(null)
   const sourceRef = useRef<PlaybackSource>('transcribed')
   const resultRef = useRef(result)
+  const titleRef = useRef(title)
+  titleRef.current = title
   const scrollTimer = useRef<number | undefined>(undefined)
   const [overlays, setOverlays] = useState<Overlay[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,61 +201,9 @@ export const ScoreView = forwardRef<ScoreHandle, Props>(function ScoreView(
   // ---------------------------------------------------------------- setup
   useEffect(() => {
     const host = hostRef.current!
-    const api = new alphaTab.AlphaTabApi(host, {
-      core: { includeNoteBounds: false, engine: 'svg', fontDirectory: '/font/' },
-      display: {
-        layoutMode: alphaTab.LayoutMode.Page,
-        staveProfile: alphaTab.StaveProfile.Default,
-        scale: 0.62,
-        stretchForce: 0.6,
-        systemPaddingTop: 76,
-        firstSystemPaddingTop: 44,
-        padding: [24, 6, 30, 6],
-        resources: {
-          mainGlyphColor: '#111111',
-          staffLineColor: '#5c5c5c',
-          barSeparatorColor: '#333333',
-          barNumberColor: '#555555',
-          secondaryGlyphColor: '#111111',
-          effectFont: '15px Arial, Helvetica, sans-serif',
-          tablatureFont: '14px Arial, Helvetica, sans-serif',
-          engravingSettings: {
-            chordDiagramStringSpacing: 3.1,
-            chordDiagramFretSpacing: 3.4,
-            chordDiagramPaddingX: 1,
-            chordDiagramPaddingY: 1,
-          },
-        },
-      },
-      notation: {
-        elements: {
-          scoreTitle: false, scoreSubTitle: false, scoreArtist: false, scoreAlbum: false,
-          scoreWords: false, scoreMusic: false, scoreWordsAndMusic: false, scoreCopyright: false,
-          guitarTuning: false, chordDiagrams: false, effectDynamics: false, effectCapo: false,
-        },
-      },
-      player: {
-        enablePlayer: true,
-        playerMode: alphaTab.PlayerMode.EnabledSynthesizer,
-        enableCursor: true,
-        enableAnimatedBeatCursor: true,
-        enableUserInteraction: true,
-        soundFont: soundFont,
-        scrollElement: scrollRef.current!,
-        scrollOffsetY: -80,
-      },
-    } as unknown as alphaTab.Settings)
+    const api = new alphaTab.AlphaTabApi(host, scoreSettings({ soundFont, scrollElement: scrollRef.current! }))
     apiRef.current = api
-    // chord boxes: alphaTab prints the fret of every string above the box; keep it discreet
-    api.settings.display.resources.elementFonts.set(alphaTab.NotationElement.ChordDiagramFretboardNumbers,
-      new alphaTab.model.Font('Arial', 6.5, alphaTab.model.FontStyle.Plain))
-    // chord symbols and the track label in an upright sans-serif, like printed tab books
-    const sans = (size: number, bold = false) => new alphaTab.model.Font('Helvetica Neue, Arial, sans-serif', size,
-      alphaTab.model.FontStyle.Plain, bold ? alphaTab.model.FontWeight.Bold : alphaTab.model.FontWeight.Regular)
-    const ef = api.settings.display.resources.elementFonts
-    ef.set(alphaTab.NotationElement.EffectChordNames, sans(13))
-    ef.set(alphaTab.NotationElement.TrackNames, sans(12))
-    api.updateSettings()
+    applyFonts(api)
 
     api.scoreLoaded.on((score) => {
       const r = resultRef.current
@@ -158,10 +241,8 @@ export const ScoreView = forwardRef<ScoreHandle, Props>(function ScoreView(
       })
     })
     // alphaTab always appends a "rendered by alphaTab" line; drop it from the page
-    const stripCredit = new MutationObserver(() => {
-      host.querySelectorAll('text').forEach(t => { if (t.textContent === 'rendered by alphaTab') t.remove() })
-    })
-    stripCredit.observe(host, { childList: true, subtree: true })
+    const creditObserver = new MutationObserver(() => stripCredit(host))
+    creditObserver.observe(host, { childList: true, subtree: true })
     // re-layout when the score area changes width (panel resized/collapsed, window resized)
     // compares against the width of the last render (not the last event), so a series of small
     // steps (panel animation, slow window drag) still ends in a re-layout at the final width
@@ -192,7 +273,7 @@ export const ScoreView = forwardRef<ScoreHandle, Props>(function ScoreView(
         onPosition(tickToTime(r, e.currentTick), Math.max(tEnd, r.duration))
       }
     })
-    return () => { stripCredit.disconnect(); ro.disconnect(); clearTimeout(rz); api.destroy(); apiRef.current = null }
+    return () => { creditObserver.disconnect(); ro.disconnect(); clearTimeout(rz); api.destroy(); apiRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -353,6 +434,10 @@ export const ScoreView = forwardRef<ScoreHandle, Props>(function ScoreView(
       const api = apiRef.current
       if (api) api.masterVolume = v
       if (audioRef.current) audioRef.current.volume = v
+    },
+    print() {
+      const api = apiRef.current
+      return api?.score ? printScore(api.score, titleRef.current, resultRef.current.capo) : Promise.resolve(window.print())
     },
     seekTime(t) {
       const api = apiRef.current

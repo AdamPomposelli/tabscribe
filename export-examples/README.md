@@ -1,7 +1,7 @@
 # Export examples
 
 Real files exported by Tabscribe from one recording: *Hoa Danh Danh*, a Vietnamese guitar song
-(capo 2, 83 BPM, key of F#, transcribed with the default Vote engine). Nothing was edited by hand.
+(83 BPM, key of F#, transcribed with the default Vote engine). Nothing was edited by hand.
 
 | File | Open it with | Download |
 |---|---|---|
