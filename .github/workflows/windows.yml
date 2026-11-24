@@ -1,7 +1,7 @@
 # Windows build: engine runtime (CPython + PyTorch CPU + ffmpeg), the NSIS installer, and an
 # end-to-end test of the real app (first-run install from a local asset server, then a full
 # transcription). Outputs are uploaded as workflow artifacts; publishing them to the GitHub
-# releases is a separate, manual step (see docs/RELEASING.md).
+# releases is a separate step: .github/workflows/windows-publish.yml (see docs/RELEASING.md).
 name: Windows build
 
 on:

@@ -1,0 +1,193 @@
+{
+  "schema": 1,
+  "app": "Tabscribe",
+  "version": "assets-2026.11.1",
+  "platform": "win32-x64",
+  "base_url": "https://github.com/AdamPomposelli/tabscribe/releases/download/assets-2026.11.1/",
+  "created": "2026-11-24T14:40:36Z",
+  "components": [
+    {
+      "id": "runtime",
+      "name": "Transcription engine",
+      "required": true,
+      "kind": "archive",
+      "dest": "runtime",
+      "description": "Python 3.11, PyTorch (CPU) and the transcription libraries, ffmpeg",
+      "installed_size": 1880609568,
+      "licence": "CPython (PSF-2.0); Python packages under their own licences (BSD/MIT/Apache-2.0, see runtime/THIRD_PARTY.txt); ffmpeg 9.0.0 LGPL build from BtbN/FFmpeg-Builds (https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-lgpl-9.0.zip). madmom's CC BY-NC-SA models are removed.",
+      "files": [
+        {
+          "name": "tabscribe-runtime-windows-x64.tar.gz",
+          "size": 647368071,
+          "sha256": "9c57660e05256158791d082b7bffa1068ebc989ba28f8921e024639892ce695d"
+        }
+      ],
+      "download_size": 647368071
+    },
+    {
+      "id": "models",
+      "name": "AI models",
+      "required": true,
+      "kind": "files",
+      "description": "Beat This! beat tracker, Tsumugi x4 transcription + chord/key model, Open-Fret and tab-labeler fingering",
+      "licence": "Beat This! final0 (MIT, CPJKU); Open-Fret (MIT, mylonasc); tab-labeler v3 (CC BY 4.0, cstr); Tsumugi (MIT, anime-song)",
+      "files": [
+        {
+          "name": "beat_this--config.json",
+          "size": 233,
+          "sha256": "90cbd3e06b224ad287155c8660b999e5d56681ac18a237394ff2fa6c01252c3b",
+          "dest": "models/beat_this/config.json"
+        },
+        {
+          "name": "beat_this--model.safetensors",
+          "size": 81029488,
+          "sha256": "f758c77ba5d862cad3718a95705964e9af55298b1fb3544c62c9d79184ea0f2e",
+          "dest": "models/beat_this/model.safetensors"
+        },
+        {
+          "name": "open_fret--config.json",
+          "size": 1478,
+          "sha256": "aabd8e95726f8d6435008846517842118716987c72dc1f37f775eab7a002f632",
+          "dest": "models/open_fret/config.json"
+        },
+        {
+          "name": "open_fret--generation_config.json",
+          "size": 247,
+          "sha256": "fe989de9ce33bb64495784e488f732edda62bc352793558cb2db30717ae8e20f",
+          "dest": "models/open_fret/generation_config.json"
+        },
+        {
+          "name": "open_fret--model.safetensors",
+          "size": 14422656,
+          "sha256": "6fbe0fef2a215e71621796d7c0f7a3617c4395432e8efb6483028269569d7e11",
+          "dest": "models/open_fret/model.safetensors"
+        },
+        {
+          "name": "open_fret--tokenizer.json",
+          "size": 165733,
+          "sha256": "519b5ef56e2828f3a1c6f51c41080483bda344ba0b3df39fbd294f9b09808097",
+          "dest": "models/open_fret/tokenizer.json"
+        },
+        {
+          "name": "open_fret--tokenizer_config.json",
+          "size": 298,
+          "sha256": "a4c0ff4fe7ee15b2d8e4a05aaf7040acd2bd7c7a8ab7c68ebef03101a2e76fcc",
+          "dest": "models/open_fret/tokenizer_config.json"
+        },
+        {
+          "name": "open_fret--training_info.json",
+          "size": 1996,
+          "sha256": "3c7b1bc490f5a1e8c78ac6fc4c1bf7c0ca94fc34e63fabd2a986b750b9de5478",
+          "dest": "models/open_fret/training_info.json"
+        },
+        {
+          "name": "tab_labeler--tab-labeler-v3-egset.onnx",
+          "size": 1355765,
+          "sha256": "93114786c6f4781e7a0b69abd7e93a0d4966873f8e54908f97a1de8e8cf788af",
+          "dest": "models/tab_labeler/tab-labeler-v3-egset.onnx"
+        },
+        {
+          "name": "tsumugi--best_model.pth",
+          "size": 56066197,
+          "sha256": "ef752daf323314b9c36d8f7a41089661734627d3437aefbee211e7d130c3c80d",
+          "dest": "models/tsumugi/best_model.pth"
+        },
+        {
+          "name": "tsumugi--best_model_guitar.pth",
+          "size": 56067843,
+          "sha256": "df50bfa6057281c15e6592fb823d53eee6f25af0bf766fd341135b9a6c0b0e5f",
+          "dest": "models/tsumugi/best_model_guitar.pth"
+        },
+        {
+          "name": "tsumugi--best_model_guitar_v1_5.pth",
+          "size": 57152017,
+          "sha256": "59c8335517d1faf7d735fef29e061181d87b96385f2e9a08332791e2b64affd4",
+          "dest": "models/tsumugi/best_model_guitar_v1_5.pth"
+        },
+        {
+          "name": "tsumugi--best_model_other_v1_5.pth",
+          "size": 57151027,
+          "sha256": "e836d5b30a29ad2301726aedb9ae348db927fbb4813359cdfb2e304ba3084501",
+          "dest": "models/tsumugi/best_model_other_v1_5.pth"
+        },
+        {
+          "name": "tsumugi--best_beat_chord_key.pth",
+          "size": 86913355,
+          "sha256": "7a7e138d65bc574dfaa76a8c9a80b59ce867ce9b7fbba0fb4959728a1bdad105",
+          "dest": "models/tsumugi/best_beat_chord_key.pth"
+        }
+      ],
+      "download_size": 410328333,
+      "installed_size": 410328333
+    },
+    {
+      "id": "bs_roformer_sw",
+      "name": "Guitar isolation (BS-RoFormer SW)",
+      "required": false,
+      "default": true,
+      "kind": "files",
+      "description": "Cleaner guitar stem than Demucs (699 MB, about 1 min per minute of audio); Demucs stays the fallback",
+      "licence": "BS-RoFormer SW 6-stem weights (jarredou, mirrored by enerjazzer): no licence stated (Hugging Face card: 'unknown'); not re-hosted, downloaded from Hugging Face. Model code: MIT",
+      "licence_url": "https://huggingface.co/enerjazzer/BS-ROFO-SW-Fixed",
+      "files": [
+        {
+          "name": "bs_roformer_sw--BS-Rofo-SW-Fixed.ckpt",
+          "size": 699412152,
+          "sha256": "24e7d35ee9c64415673d3fd33e06a67cac2c103c5df6267ba1576459c775916e",
+          "dest": "models/bs_roformer_sw/BS-Rofo-SW-Fixed.ckpt",
+          "url": "https://huggingface.co/enerjazzer/BS-ROFO-SW-Fixed/resolve/a443a2985534b3bc815ef54a5d446c6a0390f974/BS-Rofo-SW-Fixed.ckpt"
+        }
+      ],
+      "download_size": 699412152,
+      "installed_size": 699412152
+    },
+    {
+      "id": "demucs",
+      "name": "Guitar isolation, light (Demucs)",
+      "required": false,
+      "default": false,
+      "kind": "files",
+      "description": "Separates the guitar from a full band mix before transcribing (optional, per project)",
+      "licence": "Demucs htdemucs_6s (MIT, Meta AI Research)",
+      "files": [
+        {
+          "name": "torch--hub--checkpoints--5c90dfd2-34c22ccb.th",
+          "size": 54996327,
+          "sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd",
+          "dest": "models/torch/hub/checkpoints/5c90dfd2-34c22ccb.th"
+        }
+      ],
+      "download_size": 54996327,
+      "installed_size": 54996327
+    },
+    {
+      "id": "muscriptor",
+      "name": "MuScriptor (extra vote model)",
+      "required": false,
+      "default": false,
+      "kind": "files",
+      "description": "Kyutai x Mirelo transformer: adds a 7th model to the vote and the MuScriptor / Ensemble engines. Non-commercial licence.",
+      "licence": "MuScriptor medium weights: CC BY-NC 4.0 (Kyutai x Mirelo), non-commercial, gated on Hugging Face",
+      "licence_url": "https://huggingface.co/MuScriptor/muscriptor-medium",
+      "auth": "huggingface",
+      "files": [
+        {
+          "name": "muscriptor--medium--config.json",
+          "size": 126,
+          "sha256": "43e13a70fc9ae0af36b7447c06f3eac2282daeb69d79c1ff840ede7fdaa26a3b",
+          "dest": "models/muscriptor/medium/config.json",
+          "url": "https://huggingface.co/MuScriptor/muscriptor-medium/resolve/f32236969308476e01fd3aae67357de5feb05a2d/config.json"
+        },
+        {
+          "name": "muscriptor--medium--model.safetensors",
+          "size": 1228144472,
+          "sha256": "ac80adbdf85d87231735fd948af7013441c0afced316c4e9067fd5d8a7fb97ec",
+          "dest": "models/muscriptor/medium/model.safetensors",
+          "url": "https://huggingface.co/MuScriptor/muscriptor-medium/resolve/f32236969308476e01fd3aae67357de5feb05a2d/model.safetensors"
+        }
+      ],
+      "download_size": 1228144598,
+      "installed_size": 1228144598
+    }
+  ]
+}
