@@ -4,7 +4,7 @@
   "version": "assets-2026.11.1",
   "platform": "win32-x64",
   "base_url": "https://github.com/AdamPomposelli/tabscribe/releases/download/assets-2026.11.1/",
-  "created": "2026-11-24T14:40:36Z",
+  "created": "2026-11-24T20:12:49Z",
   "components": [
     {
       "id": "runtime",
@@ -18,11 +18,11 @@
       "files": [
         {
           "name": "tabscribe-runtime-windows-x64.tar.gz",
-          "size": 647368071,
-          "sha256": "9c57660e05256158791d082b7bffa1068ebc989ba28f8921e024639892ce695d"
+          "size": 647391339,
+          "sha256": "571358170bd0acd7993fcb86a24cad5fc1f89f531ed753bdebd42a287c23e3d5"
         }
       ],
-      "download_size": 647368071
+      "download_size": 647391339
     },
     {
       "id": "models",
