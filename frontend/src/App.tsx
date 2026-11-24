@@ -5,7 +5,7 @@ import {
   Guitar, Trash2, X, Gauge, Loader2, Check, Printer, Volume2, MoreHorizontal,
 } from 'lucide-react'
 import { api, type Engines, type Meta, type Result, type Status } from './api'
-import { bytes, setupBridge, type SetupStatus } from './setup/bridge'
+import { DEVICE, IS_MAC, bytes, setupBridge, type SetupStatus } from './setup/bridge'
 import { ScoreView, type ScoreHandle, type PlaybackSource } from './components/ScoreView'
 import { PianoRoll } from './components/PianoRoll'
 import { EditableTitle } from './components/EditableTitle'
@@ -654,13 +654,13 @@ function ShareButton({ id, title, disabled }: { id: string; title: string; disab
   }
   return (
     <div className="dropdown" ref={ref}>
-      <button className="btn-secondary top-btn" disabled={disabled} onClick={() => setOpen(!open)} title="Share via AirDrop, Messages, Mail…">
+      <button className="btn-secondary top-btn" disabled={disabled} onClick={() => setOpen(!open)} title={IS_MAC ? 'Share via AirDrop, Messages, Mail…' : 'Share or save the file'}>
         <Share size={16} /> <span className="btn-text">Share</span>
       </button>
       {open && (
         <div className="menu right">
           <button className="menu-item" onClick={() => shareFile('score.gp5', 'gp5')}>
-            <div><div>Share tab (.gp5)</div><div className="muted small">AirDrop, Messages, Mail…</div></div><Share size={15} />
+            <div><div>Share tab (.gp5)</div><div className="muted small">{IS_MAC ? 'AirDrop, Messages, Mail…' : 'Guitar Pro, TuxGuitar, MuseScore…'}</div></div><Share size={15} />
           </button>
           <button className="menu-item" onClick={() => shareFile('score.mid', 'mid')}>
             <div><div>Share MIDI</div><div className="muted small">For a DAW or notation app</div></div><Share size={15} />
@@ -775,7 +775,7 @@ function ComponentsSection() {
       <div className="settings-head">Components</div>
       <div className="muted small">
         {st ? <>{installed.length} installed ({bytes(installed.reduce((s, c) => s + c.installed_size, 0))})
-          {missing.length > 0 && <> · available: {missing.map(c => c.name).join(', ')}</>}</> : 'Engine and AI models installed on this Mac.'}
+          {missing.length > 0 && <> · available: {missing.map(c => c.name).join(', ')}</>}</> : `Engine and AI models installed on this ${DEVICE}.`}
       </div>
       <div><button className="btn-ghost" onClick={() => setupBridge?.open()}>Manage, check or repair…</button></div>
     </div>

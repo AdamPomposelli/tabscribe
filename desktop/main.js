@@ -1,9 +1,9 @@
-// Tabscribe desktop shell.
+// Tabscribe desktop shell (macOS and Windows).
 //
-// Packaged app ("managed" mode): the code (backend, vendor, built UI) ships read-only in
-// Tabscribe.app/Contents/Resources/engine; the heavy parts (Python engine, models) are
-// installed on first run from the app's GitHub release by installer.js into
-// ~/Library/Application Support/Tabscribe, where projects and logs live too.
+// Packaged app ("managed" mode): the code (backend, vendor, built UI) ships read-only in the
+// app's resources/engine; the heavy parts (Python engine, models) are installed on first run
+// from the app's GitHub release by installer.js into the user data folder
+// (~/Library/Application Support/Tabscribe, %APPDATA%\Tabscribe), where projects and logs live too.
 // Development (`npm start` in a checkout): runs the checkout's .venv as before.
 // Set TABSCRIBE_MANAGED=1 to try the installer from a checkout.
 const { app, BrowserWindow, ipcMain, ShareMenu, shell, dialog, session, Menu, protocol, net } = require('electron')
@@ -13,7 +13,7 @@ const path = require('path')
 const fs = require('fs')
 const os = require('os')
 const http = require('http')
-const { Installer, CancelledError } = require('./installer')
+const { Installer, CancelledError, runtimePaths, cleanEnv, WIN } = require('./installer')
 
 const MANAGED = app.isPackaged || process.env.TABSCRIBE_MANAGED === '1'
 const ENGINE = app.isPackaged ? path.join(process.resourcesPath, 'engine') : path.resolve(__dirname, '..')
@@ -23,7 +23,9 @@ const HOME = process.env.TABSCRIBE_DATA_DIR || (MANAGED ? app.getPath('userData'
 
 let installer = null
 if (MANAGED) {
-  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, 'manifest.json'), 'utf8'))
+  // one manifest per platform: the models are shared, the engine runtime is built per OS
+  const perPlatform = path.join(__dirname, `manifest-${process.platform}-${process.arch}.json`)
+  const manifest = JSON.parse(fs.readFileSync(fs.existsSync(perPlatform) ? perPlatform : path.join(__dirname, 'manifest.json'), 'utf8'))
   // TABSCRIBE_ASSETS_URL: test a release from a local server before uploading it
   installer = new Installer({ manifest, home: HOME, baseUrl: process.env.TABSCRIBE_ASSETS_URL })
 }
@@ -60,25 +62,29 @@ function waitFor(url, timeoutMs = 120000) {
 
 function backendCommand() {
   if (!MANAGED) {
-    const py = path.join(ENGINE, '.venv', 'bin', 'python')
+    const py = WIN ? path.join(ENGINE, '.venv', 'Scripts', 'python.exe') : path.join(ENGINE, '.venv', 'bin', 'python')
     if (!fs.existsSync(py)) throw new Error(`Python environment not found at ${py}. Run ./run.sh once in ${ENGINE}.`)
     // GUI apps don't inherit the shell PATH on macOS: ffmpeg lives in Homebrew
-    const PATH = ['/opt/homebrew/bin', '/usr/local/bin', process.env.PATH || ''].join(':')
-    return { py, logDir: path.join(ENGINE, 'logs'), env: { ...process.env, PATH, PYTHONUNBUFFERED: '1' } }
+    const PATH = WIN ? process.env.PATH : ['/opt/homebrew/bin', '/usr/local/bin', process.env.PATH || ''].join(':')
+    return { py, logDir: path.join(ENGINE, 'logs'), env: { ...process.env, PATH, PYTHONUNBUFFERED: '1', PYTHONUTF8: '1' } }
   }
   const rt = path.join(HOME, 'runtime')
+  const rp = runtimePaths(rt)
   const cache = path.join(HOME, 'cache')
   // nothing from the user's shell (Homebrew, pyenv, conda...) can leak into the engine
+  const base = WIN
+    ? { ...cleanEnv(rp.bin), APPDATA: process.env.APPDATA, LOCALAPPDATA: process.env.LOCALAPPDATA, USERNAME: process.env.USERNAME }
+    : { HOME: os.homedir(), USER: os.userInfo().username, TMPDIR: os.tmpdir(), LANG: 'en_US.UTF-8',
+        PATH: [...rp.bin, '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(':') }
   const env = {
-    HOME: os.homedir(), USER: os.userInfo().username, TMPDIR: os.tmpdir(), LANG: 'en_US.UTF-8',
-    PATH: [path.join(rt, 'bin'), '/usr/bin', '/bin', '/usr/sbin', '/sbin'].join(':'),
-    PYTHONUNBUFFERED: '1', PYTHONNOUSERSITE: '1', PYTHONPYCACHEPREFIX: path.join(cache, 'pycache'),
+    ...base,
+    PYTHONUNBUFFERED: '1', PYTHONNOUSERSITE: '1', PYTHONUTF8: '1', PYTHONPYCACHEPREFIX: path.join(cache, 'pycache'),
     TABSCRIBE_DATA: path.join(HOME, 'data'), TABSCRIBE_MODELS: path.join(HOME, 'models'),
     TORCH_HOME: path.join(HOME, 'models', 'torch'), HF_HOME: path.join(cache, 'huggingface'),
     HF_HUB_OFFLINE: '1', TRANSFORMERS_OFFLINE: '1', HF_HUB_DISABLE_TELEMETRY: '1',
     NUMBA_CACHE_DIR: path.join(cache, 'numba'), MPLCONFIGDIR: path.join(cache, 'matplotlib'),
   }
-  return { py: path.join(rt, 'bin', 'python3'), logDir: path.join(HOME, 'logs'), env }
+  return { py: rp.py, logDir: path.join(HOME, 'logs'), env }
 }
 
 async function startBackend() {
@@ -90,7 +96,7 @@ async function startBackend() {
   const log = fs.openSync(path.join(logDir, 'desktop-backend.log'), 'a')
   fs.writeSync(log, `\n--- ${new Date().toISOString()} starting engine (${py})\n`)
   const child = spawn(py, ['-m', 'uvicorn', 'tabscribe.server:app', '--app-dir', path.join(ENGINE, 'backend'),
-    '--host', '127.0.0.1', '--port', String(port)], { cwd: ENGINE, env, stdio: ['ignore', log, log] })
+    '--host', '127.0.0.1', '--port', String(port)], { cwd: ENGINE, env, stdio: ['ignore', log, log], windowsHide: true })
   backend = child
   child.on('error', () => { if (backend === child) backend = null })
   child.on('exit', code => {
@@ -132,6 +138,7 @@ async function createWindow() {
     width: 1440, height: 900, minWidth: 980, minHeight: 640,
     title: process.env.TABSCRIBE_DATA_DIR ? `Tabscribe — TEST PROFILE (${HOME})` : 'Tabscribe', backgroundColor: '#0e0e10', show: false,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    autoHideMenuBar: true,  // Windows: no File/Edit/View bar above the app (Alt shows it)
     trafficLightPosition: { x: 16, y: 20 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true,

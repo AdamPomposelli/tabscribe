@@ -2,7 +2,7 @@
 // downloads it from the app's GitHub release with progress, checks and repairs it later.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Check, CheckCircle2, Download, ExternalLink, FolderOpen, Loader2, Pause, RotateCcw, Scale, ShieldCheck, Trash2 } from 'lucide-react'
-import { bytes, eta, setupBridge, type Progress, type SetupStatus, type VerifyResult } from './bridge'
+import { DEVICE, bytes, eta, setupBridge, type Progress, type SetupStatus, type VerifyResult } from './bridge'
 
 type Mode = 'first-run' | 'manage' | 'repair'
 const mode = (new URLSearchParams(location.search).get('mode') || 'first-run') as Mode
@@ -92,8 +92,8 @@ export default function Setup() {
             <h1>{mode === 'first-run' ? 'Welcome to Tabscribe' : 'Components'}</h1>
             <p className="muted">
               {mode === 'first-run'
-                ? 'Everything runs on your Mac. Download the engine once, then Tabscribe works offline.'
-                : 'What is installed on this Mac. Add, check or repair parts here.'}
+                ? `Everything runs on your ${DEVICE}. Download the engine once, then Tabscribe works offline.`
+                : `What is installed on this ${DEVICE}. Add, check or repair parts here.`}
             </p>
           </div>
         </header>
@@ -144,7 +144,7 @@ export default function Setup() {
                   {c.auth === 'huggingface' && sel[c.id] && !c.installed && (
                     <div className="token-box">
                       {st.hfTokenFound
-                        ? <span className="muted small">Uses your Hugging Face login on this Mac (the account must have accepted the licence).</span>
+                        ? <span className="muted small">Uses your Hugging Face login on this {DEVICE} (the account must have accepted the licence).</span>
                         : <>
                           <span className="muted small">Free Hugging Face account needed: accept the licence on <a href={c.licence_url ?? '#'} target="_blank" rel="noreferrer">huggingface.co</a>, then paste a read token. It is used once and never saved.</span>
                           <input className="input" type="password" placeholder="hf_…" value={token} onChange={e => setToken(e.target.value)} autoComplete="off" spellCheck={false} />
@@ -162,7 +162,7 @@ export default function Setup() {
             <div className="sum-grid">
               <div><div className="muted small">To download</div><div className="sum-v">{bytes(download)}</div></div>
               <div><div className="muted small">Disk space needed</div><div className="sum-v">{bytes(disk)}</div></div>
-              <div><div className="muted small">Available on this Mac</div><div className={`sum-v ${enoughSpace ? '' : 'error'}`}>{bytes(st.free)}</div></div>
+              <div><div className="muted small">Available on this {DEVICE}</div><div className={`sum-v ${enoughSpace ? '' : 'error'}`}>{bytes(st.free)}</div></div>
               {installedSize > 0 && <div><div className="muted small">Installed</div><div className="sum-v">{bytes(installedSize)}</div></div>}
             </div>
             {!enoughSpace && <div className="setup-msg error"><AlertTriangle size={15} /> Free up {bytes(disk + st.margin - st.free)} on this disk, then press Install.</div>}
@@ -233,7 +233,7 @@ type Copy = { title: string; tech?: string; what: string; kpi?: string; licences
 const COPY: Record<string, Copy> = {
   runtime: {
     title: 'Core engine', tech: 'Python · PyTorch · ffmpeg',
-    what: 'Runs Tabscribe on your Mac. Needed for everything.',
+    what: `Runs Tabscribe on your ${DEVICE}. Needed for everything.`,
     licences: [
       { what: 'Python 3.11', who: 'Python Software Foundation', licence: 'PSF-2.0', url: 'https://github.com/astral-sh/python-build-standalone' },
       { what: 'PyTorch and Python libraries', who: 'their authors', licence: 'BSD / MIT / Apache-2.0', note: 'Full list in runtime/THIRD_PARTY.txt' },

@@ -15,7 +15,9 @@
     "prebuild": "node -e \"require('fs').accessSync('manifest.json')\" || (echo 'desktop/manifest.json missing: run python3 release/build_assets.py first' && exit 1)",
     "ui": "npm --prefix ../frontend run build",
     "pack": "npm run prebuild && npm run ui && electron make-icon.js && electron-builder --mac dir --arm64",
-    "dist": "npm run prebuild && npm run ui && electron make-icon.js && electron-builder --mac dmg --arm64"
+    "dist": "npm run prebuild && npm run ui && electron make-icon.js && electron-builder --mac dmg --arm64",
+    "prebuild:win": "node -e \"require('fs').accessSync('manifest-win32-x64.json')\" || (echo 'desktop/manifest-win32-x64.json missing: run release/build_runtime_windows.py first' && exit 1)",
+    "dist:win": "npm run prebuild:win && npm run ui && electron make-icon.js && electron-builder --win nsis --x64 --publish never"
   },
   "build": {
     "appId": "io.github.adampomposelli.tabscribe",
@@ -30,22 +32,59 @@
       "preload.js",
       "installer.js",
       "loading.html",
+      "package.json",
       "manifest.json",
-      "package.json"
+      "manifest-*.json"
     ],
     "extraResources": [
-      { "from": "../backend/tabscribe", "to": "engine/backend/tabscribe", "filter": ["**/*.py"] },
-      { "from": "../vendor/open_fret_pkg", "to": "engine/vendor/open_fret_pkg", "filter": ["**/*", "!**/__pycache__/**"] },
-      { "from": "../vendor/tsumugi/instrument_agnostic_amt", "to": "engine/vendor/tsumugi/instrument_agnostic_amt", "filter": ["**/*", "!**/__pycache__/**"] },
-      { "from": "../vendor/tsumugi/LICENSE", "to": "engine/vendor/tsumugi/LICENSE" },
-      { "from": "../frontend/dist", "to": "engine/frontend/dist" },
-      { "from": "../release/THIRD_PARTY_NOTICES.md", "to": "THIRD_PARTY_NOTICES.md" }
+      {
+        "from": "../backend/tabscribe",
+        "to": "engine/backend/tabscribe",
+        "filter": [
+          "**/*.py"
+        ]
+      },
+      {
+        "from": "../vendor/open_fret_pkg",
+        "to": "engine/vendor/open_fret_pkg",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**"
+        ]
+      },
+      {
+        "from": "../vendor/tsumugi/instrument_agnostic_amt",
+        "to": "engine/vendor/tsumugi/instrument_agnostic_amt",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**"
+        ]
+      },
+      {
+        "from": "../vendor/tsumugi/LICENSE",
+        "to": "engine/vendor/tsumugi/LICENSE"
+      },
+      {
+        "from": "../frontend/dist",
+        "to": "engine/frontend/dist"
+      },
+      {
+        "from": "../release/THIRD_PARTY_NOTICES.md",
+        "to": "THIRD_PARTY_NOTICES.md"
+      }
     ],
     "afterSign": "scripts/after-sign.js",
     "mac": {
       "category": "public.app-category.music",
       "icon": "build/icon.png",
-      "target": [{ "target": "dmg", "arch": ["arm64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
       "minimumSystemVersion": "12.0",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
@@ -55,6 +94,24 @@
     "dmg": {
       "artifactName": "Tabscribe-${version}-${arch}.dmg",
       "title": "Tabscribe ${version}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Tabscribe-Setup-${version}-x64.${ext}",
+      "shortcutName": "Tabscribe"
     }
   },
   "devDependencies": {

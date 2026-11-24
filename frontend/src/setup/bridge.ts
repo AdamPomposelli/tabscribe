@@ -37,6 +37,10 @@ import { mockBridge } from './mock'
 export const setupBridge: SetupBridge | null = (window as unknown as { tabscribe?: { setup?: SetupBridge | null } }).tabscribe?.setup
   ?? (import.meta.env.DEV && new URLSearchParams(location.search).has('mock') ? mockBridge() : null)
 
+/** The machine's name in UI copy: the same build runs on macOS and Windows. */
+export const IS_MAC = !/Windows/.test(navigator.userAgent)
+export const DEVICE = IS_MAC ? 'Mac' : 'PC'
+
 export function bytes(b: number): string {
   if (b <= 0) return '0 MB'
   if (b >= 1e9) return `${(b / 1e9).toFixed(2)} GB`

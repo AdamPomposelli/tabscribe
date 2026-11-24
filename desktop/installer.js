@@ -9,6 +9,26 @@ const fs = require('fs')
 const fsp = require('fs/promises')
 const os = require('os')
 const path = require('path')
+const zlib = require('zlib')
+
+const WIN = process.platform === 'win32'
+const SYSTEM_ROOT = process.env.SystemRoot || 'C:\\Windows'
+
+/** Where things live inside an unpacked engine runtime (python-build-standalone layout per OS). */
+function runtimePaths(rt) {
+  return WIN
+    ? { py: path.join(rt, 'python.exe'), bin: [rt, path.join(rt, 'Scripts'), path.join(rt, 'bin')],
+        ffmpeg: path.join(rt, 'bin', 'ffmpeg.exe') }
+    : { py: path.join(rt, 'bin', 'python3'), bin: [path.join(rt, 'bin')], ffmpeg: path.join(rt, 'bin', 'ffmpeg') }
+}
+
+/** Minimal environment for a child process that must not see the user's shell setup. */
+function cleanEnv(extraPath = []) {
+  if (!WIN) return { PATH: [...extraPath, '/usr/bin', '/bin'].join(':'), HOME: os.homedir(), PYTHONNOUSERSITE: '1' }
+  const sys32 = path.join(SYSTEM_ROOT, 'System32')
+  return { SystemRoot: SYSTEM_ROOT, windir: SYSTEM_ROOT, PATH: [...extraPath, sys32, SYSTEM_ROOT].join(';'),
+    TEMP: os.tmpdir(), TMP: os.tmpdir(), USERPROFILE: os.homedir(), PYTHONNOUSERSITE: '1', PYTHONUTF8: '1' }
+}
 
 const RECEIPTS = 'installed.json'
 const SPACE_MARGIN = 300 * 1024 * 1024
@@ -235,30 +255,41 @@ class Installer extends EventEmitter {
     if (sum !== f.sha256) throw Object.assign(new Error(`sha256 ${sum.slice(0, 12)}… ≠ ${f.sha256.slice(0, 12)}…`), { checksum: true })
   }
 
-  /** Concatenate the archive parts into `tar -xJ`, unpack beside the old copy, then swap. */
+  /** Concatenate the archive parts into `tar`, unpack beside the old copy, then swap.
+   *  macOS: .tar.xz into /usr/bin/tar. Windows: .tar.gz, gunzipped here and fed to the tar.exe
+   *  that ships with Windows 10+ (its xz support isn't guaranteed). */
   async extract(c, signal, onBytes) {
     const staging = path.join(this.home, `.staging-${c.id}`)
     await fsp.rm(staging, { recursive: true, force: true })
     fs.mkdirSync(staging, { recursive: true })
+    const gz = /\.tar\.gz(\.part\d+)?$/.test(c.files[0].name)
+    const tarBin = WIN ? path.join(SYSTEM_ROOT, 'System32', 'tar.exe') : '/usr/bin/tar'
     await new Promise((resolve, reject) => {
-      const tar = spawn('/usr/bin/tar', ['-xJf', '-', '-C', staging], { stdio: ['pipe', 'ignore', 'pipe'] })
+      const tar = spawn(tarBin, [gz ? '-xf' : '-xJf', '-', '-C', staging], { stdio: ['pipe', 'ignore', 'pipe'], windowsHide: true })
       let err = ''
       tar.stderr.on('data', d => { err += d })
       tar.on('error', reject)
       tar.on('close', code => (code === 0 ? resolve() : reject(new Error(`Unpacking failed (tar ${code}): ${err.slice(-300)}`))))
       const onAbort = () => tar.kill('SIGTERM')
       signal.addEventListener('abort', onAbort, { once: true })
+      // gzip archives are decompressed in-process; tar then only sees a plain tar stream
+      const sink = gz ? zlib.createGunzip() : tar.stdin
+      if (gz) {
+        sink.on('error', e => { tar.kill(); reject(new Error(`Unpacking failed (gzip): ${e.message}`)) })
+        sink.pipe(tar.stdin)
+      }
+      tar.stdin.on('error', () => { /* tar exited early: its exit code reports the problem */ })
       ;(async () => {
         let n = 0
         for (const f of c.files) {
           for await (const chunk of fs.createReadStream(this.partPath(f), { highWaterMark: 1 << 20 })) {
             if (signal.aborted) return
             n += chunk.length
-            if (!tar.stdin.write(chunk)) await new Promise(r => tar.stdin.once('drain', r))
+            if (!sink.write(chunk)) await new Promise(r => sink.once('drain', r))
             onBytes(n)
           }
         }
-        tar.stdin.end()
+        sink.end()
       })().catch(e => { tar.kill(); reject(e) })
     })
     const unpacked = path.join(staging, c.dest)
@@ -282,10 +313,10 @@ class Installer extends EventEmitter {
       const problems = []
       if (c.kind === 'archive') {
         onStep(c.id, null)
-        const py = path.join(this.home, c.dest, 'bin', 'python3')
-        const r = await runQuiet(py, ['-c', 'import torch, numpy, fastapi, uvicorn, basic_pitch, beat_this, transkun, onnxruntime, transformers'])
+        const rp = runtimePaths(path.join(this.home, c.dest))
+        const r = await runQuiet(rp.py, ['-c', 'import torch, numpy, fastapi, uvicorn, basic_pitch, beat_this, transkun, onnxruntime, transformers'], rp.bin)
         if (r.code !== 0) problems.push(`engine does not start: ${r.err.trim().split('\n').pop() || 'exit ' + r.code}`)
-        const ff = await runQuiet(path.join(this.home, c.dest, 'bin', 'ffmpeg'), ['-hide_banner', '-version'])
+        const ff = await runQuiet(rp.ffmpeg, ['-hide_banner', '-version'], rp.bin)
         if (ff.code !== 0) problems.push('ffmpeg missing or broken')
       } else {
         for (const f of c.files) {
@@ -368,10 +399,10 @@ function sleep(ms, signal) {
 
 function rmQuiet(p) { try { fs.rmSync(p, { force: true }) } catch { /* gone */ } }
 
-function runQuiet(cmd, args) {
+function runQuiet(cmd, args, extraPath = []) {
   return new Promise(resolve => {
     let err = ''
-    const p = spawn(cmd, args, { stdio: ['ignore', 'ignore', 'pipe'], env: { PATH: '/usr/bin:/bin', HOME: os.homedir(), PYTHONNOUSERSITE: '1' } })
+    const p = spawn(cmd, args, { stdio: ['ignore', 'ignore', 'pipe'], env: cleanEnv(extraPath), windowsHide: true })
     p.stderr.on('data', d => { err += d })
     p.on('error', e => resolve({ code: -1, err: e.message }))
     p.on('close', code => resolve({ code, err }))
@@ -382,4 +413,4 @@ function fmt(b) {
   return b >= 1e9 ? `${(b / 1e9).toFixed(2)} GB` : `${Math.round(b / 1e6)} MB`
 }
 
-module.exports = { Installer, CancelledError, fmt }
+module.exports = { Installer, CancelledError, fmt, runtimePaths, cleanEnv, WIN }

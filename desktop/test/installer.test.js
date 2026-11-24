@@ -130,3 +130,28 @@ test('uninstall all removes the engine, models, downloads and caches, keeps proj
   assert.strictEqual(inst.status().ready, false)
   fs.rmSync(home, { recursive: true, force: true })
 })
+
+test('Windows-style runtime: split .tar.gz is gunzipped in-process and unpacked by plain tar', async () => {
+  const src = fs.mkdtempSync(path.join(os.tmpdir(), 'ts-rtgz-'))
+  fs.mkdirSync(path.join(src, 'runtime', 'bin'), { recursive: true })
+  fs.writeFileSync(path.join(src, 'runtime', 'tabscribe-runtime.json'), '{"version":"gz"}')
+  const payload = crypto.randomBytes(1_500_000)
+  fs.writeFileSync(path.join(src, 'runtime', 'bin', 'payload'), payload)
+  const tarBuf = execFileSync('tar', ['-cf', '-', '-C', src, 'runtime'], { maxBuffer: 64 << 20 })
+  const gz = require('zlib').gzipSync(tarBuf, { level: 1 })
+  const half = Math.floor(gz.length / 2)
+  const parts = [gz.subarray(0, half), gz.subarray(half)]
+  parts.forEach((p, i) => fs.writeFileSync(path.join(OUT, `rtw.tar.gz.part0${i}`), p))
+  const m = { ...manifest, components: [{ id: 'runtime', name: 'Runtime', required: true, kind: 'archive', dest: 'runtime',
+    installed_size: 1_500_100, download_size: gz.length,
+    files: parts.map((p, i) => ({ name: `rtw.tar.gz.part0${i}`, size: p.length, sha256: sha(p) })) }] }
+  const home2 = fs.mkdtempSync(path.join(os.tmpdir(), 'ts-home-gz-'))
+  try {
+    const inst = new Installer({ manifest: m, home: home2 })
+    await inst.install(['runtime'])
+    assert.equal(inst.status().ready, true)
+    assert.equal(sha(fs.readFileSync(path.join(home2, 'runtime', 'bin', 'payload'))), sha(payload))
+  } finally {
+    fs.rmSync(home2, { recursive: true, force: true }); fs.rmSync(src, { recursive: true, force: true })
+  }
+})

@@ -5,6 +5,7 @@
 //
 //   python3 release/serve_local.py assets-2026.11.1 --drop-after 150 &
 //   node release/e2e_test.js --app desktop/dist/mac-arm64/Tabscribe.app --audio bench/YeuEm.mp3 --out /tmp/e2e
+//   node release/e2e_test.js --app desktop/dist/win-unpacked/Tabscribe.exe ...   (Windows)
 //
 // Screenshots (setup, mid-download, app) and a JSON report land in --out.
 const { spawn, execFileSync } = require('child_process')
@@ -74,10 +75,16 @@ async function main() {
   const keepAlive = setInterval(() => {}, 1000)  // a pending CDP call alone doesn't keep node running
   fs.rmSync(OUT, { recursive: true, force: true })
   fs.mkdirSync(OUT, { recursive: true })
-  const exe = path.join(APP, 'Contents', 'MacOS', 'Tabscribe')
-  // a "clean machine": no Homebrew/pyenv on PATH, no Python env vars, empty data folder
-  const env = { HOME: process.env.HOME, USER: process.env.USER, TMPDIR: process.env.TMPDIR, PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-    TABSCRIBE_DATA_DIR: HOME_DIR, TABSCRIBE_ASSETS_URL: ASSETS, HF_TOKEN: '' }
+  const WIN = process.platform === 'win32'
+  const exe = WIN ? APP : path.join(APP, 'Contents', 'MacOS', 'Tabscribe')
+  // a "clean machine": no Homebrew/pyenv/system Python on PATH, no Python env vars, empty data folder
+  const sysroot = process.env.SystemRoot || 'C:\\Windows'
+  const env = WIN
+    ? { SystemRoot: sysroot, windir: sysroot, PATH: `${sysroot}\\System32;${sysroot}`, TEMP: process.env.TEMP, TMP: process.env.TMP,
+        USERPROFILE: process.env.USERPROFILE, APPDATA: process.env.APPDATA, LOCALAPPDATA: process.env.LOCALAPPDATA,
+        TABSCRIBE_DATA_DIR: HOME_DIR, TABSCRIBE_ASSETS_URL: ASSETS, HF_TOKEN: '' }
+    : { HOME: process.env.HOME, USER: process.env.USER, TMPDIR: process.env.TMPDIR, PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+        TABSCRIBE_DATA_DIR: HOME_DIR, TABSCRIBE_ASSETS_URL: ASSETS, HF_TOKEN: '' }
   const app = spawn(exe, [`--remote-debugging-port=${DEBUG_PORT}`], { env, stdio: ['ignore', 'pipe', 'pipe'] })
   app.stdout.on('data', d => fs.appendFileSync(path.join(OUT, 'electron.log'), d))
   app.stderr.on('data', d => fs.appendFileSync(path.join(OUT, 'electron.log'), d))
@@ -129,12 +136,22 @@ async function main() {
     step('app opened', { base })
     const engines = await (await fetch(`${base}/api/engines`)).json()
     step('engines', engines)
-    // the engine must not touch Homebrew or the checkout's venvs
-    const pid = execFileSync('/usr/sbin/lsof', ['-ti', `tcp:${new URL(base).port}`, '-sTCP:LISTEN']).toString().trim().split('\n')[0]
-    const libs = execFileSync('/usr/sbin/lsof', ['-p', pid]).toString()
-    const leaks = libs.split('\n').filter(l => /\/opt\/homebrew|\/usr\/local\/|fretscribe\/\.venv/.test(l))
-    step('engine process', { pid, python: (libs.match(/\S+\/runtime\/bin\/python3\.11/) || [])[0], foreign_files: leaks.length })
-    if (leaks.length) throw new Error('engine uses files outside the app:\n' + leaks.slice(0, 5).join('\n'))
+    // the engine must not touch Homebrew or the checkout's venvs (macOS: lsof; Windows: the
+    // listening process must be the runtime's python.exe)
+    if (WIN) {
+      const port = new URL(base).port
+      const pid = execFileSync('powershell', ['-NoProfile', '-Command',
+        `(Get-NetTCPConnection -LocalPort ${port} -State Listen).OwningProcess | Select-Object -First 1`]).toString().trim()
+      const exePath = execFileSync('powershell', ['-NoProfile', '-Command', `(Get-Process -Id ${pid}).Path`]).toString().trim()
+      step('engine process', { pid, python: exePath })
+      if (!exePath.toLowerCase().startsWith(path.join(HOME_DIR, 'runtime').toLowerCase())) throw new Error('engine is not the installed runtime: ' + exePath)
+    } else {
+      const pid = execFileSync('/usr/sbin/lsof', ['-ti', `tcp:${new URL(base).port}`, '-sTCP:LISTEN']).toString().trim().split('\n')[0]
+      const libs = execFileSync('/usr/sbin/lsof', ['-p', pid]).toString()
+      const leaks = libs.split('\n').filter(l => /\/opt\/homebrew|\/usr\/local\/|fretscribe\/\.venv/.test(l))
+      step('engine process', { pid, python: (libs.match(/\S+\/runtime\/bin\/python3\.11/) || [])[0], foreign_files: leaks.length })
+      if (leaks.length) throw new Error('engine uses files outside the app:\n' + leaks.slice(0, 5).join('\n'))
+    }
 
     const fd = new FormData()
     fd.append('file', new Blob([fs.readFileSync(AUDIO)]), path.basename(AUDIO))
