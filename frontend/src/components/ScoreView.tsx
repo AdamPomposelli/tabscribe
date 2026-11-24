@@ -163,14 +163,19 @@ export const ScoreView = forwardRef<ScoreHandle, Props>(function ScoreView(
     })
     stripCredit.observe(host, { childList: true, subtree: true })
     // re-layout when the score area changes width (panel resized/collapsed, window resized)
-    let lastW = 0, rz: number | undefined
+    // compares against the width of the last render (not the last event), so a series of small
+    // steps (panel animation, slow window drag) still ends in a re-layout at the final width
+    let renderedW = 0, rz: number | undefined
     const ro = new ResizeObserver(([e]) => {
       const w = Math.round(e.contentRect.width)
-      if (!lastW) { lastW = w; return }
-      if (Math.abs(w - lastW) < 8) return
-      lastW = w
+      if (!renderedW) { renderedW = w; return }
       clearTimeout(rz)
-      rz = window.setTimeout(() => { if (apiRef.current?.score) apiRef.current.render() }, 120)
+      rz = window.setTimeout(() => {
+        const now = Math.round(scrollRef.current?.clientWidth ?? w)
+        if (Math.abs(now - renderedW) < 4 || !apiRef.current?.score) return
+        renderedW = now
+        apiRef.current.render()
+      }, 120)
     })
     ro.observe(scrollRef.current!)
     api.renderStarted.on(() => setLoading(true))

@@ -121,10 +121,12 @@ select, input { font: inherit; }
 .pill { display: inline-flex; align-items: center; gap: 5px; background: #242427; border: 1px solid #303034; border-radius: 10px; padding: 6px 11px; font-size: 14px; white-space: nowrap; }
 
 /* -------------------------------------------------------------- workspace */
-.workspace { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) clamp(170px, 27vh, 300px); position: relative; }
+/* minmax(0, 1fr) column: without it the column can't shrink below the last rendered score width,
+   so reopening the project panel left the score overflowing on the right */
+.workspace { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) clamp(170px, 27vh, 300px); position: relative; }
 .workspace.roll-expanded { grid-template-rows: minmax(0, .45fr) minmax(0, .55fr); }
 /* isolation keeps alphaTab's cursor layer (z-index 1000) inside the score, under menus and modals */
-.score-area { min-height: 0; background: var(--paper); position: relative; isolation: isolate; }
+.score-area { min-height: 0; min-width: 0; background: var(--paper); position: relative; isolation: isolate; }
 .score-area.dark { background: var(--bg); }
 .score-scroll { height: 100%; overflow: auto; }
 .score-page { max-width: 1400px; margin: 0 auto; padding: 28px 8px 60px; position: relative; color: #111; }
