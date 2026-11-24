@@ -58,9 +58,12 @@ def win_lock() -> Path:
     return out
 
 
-def py_env(rt: Path) -> dict:
+def py_env(rt: Path, build: bool = False) -> dict:
+    """Environment for the runtime's Python. build=True keeps the machine's PATH (pip needs git and
+    the MSVC tools to build madmom); the smoke test runs without it, like the app does."""
     sysroot = os.environ.get("SystemRoot", r"C:\Windows")
-    path = os.pathsep.join([str(rt), str(rt / "Scripts"), str(rt / "bin"), str(Path(sysroot) / "System32"), sysroot])
+    dirs = [str(rt), str(rt / "Scripts"), str(rt / "bin"), str(Path(sysroot) / "System32"), sysroot]
+    path = os.pathsep.join(dirs + ([os.environ.get("PATH", "")] if build else []))
     env = {**os.environ, "PATH": path, "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PYTHONNOUSERSITE": "1", "PYTHONUTF8": "1"}
     env.pop("VIRTUAL_ENV", None)
     env.pop("PYTHONPATH", None)
@@ -79,7 +82,7 @@ def build_runtime() -> Path:
     (stage / "python").rename(rt)
     shutil.rmtree(stage)
     py = rt / "python.exe"
-    env = py_env(rt)
+    env = py_env(rt, build=True)
     run([py, "-m", "pip", "install", "--no-warn-script-location", "-r", win_lock()], env=env)
     return rt
 
