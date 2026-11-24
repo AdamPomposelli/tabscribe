@@ -128,7 +128,7 @@ Every project goes through the same steps, all on your Mac.
     <td valign="top">🐢 <b>Slow it down</b><br>Speed control, metronome and volume, on the transcription or on the original.</td>
   </tr>
   <tr>
-    <td valign="top">📤 <b>Export everywhere</b><br>Guitar Pro (.gp5) for MuseScore, TuxGuitar and Guitar Pro, MIDI (quantised or as played), and PDF.</td>
+    <td valign="top">📤 <b>Export everywhere</b><br>Guitar Pro (.gp5) for MuseScore, TuxGuitar and Guitar Pro, MIDI (quantised or as played), and PDF. <a href="export-examples/">See real exports</a>.</td>
     <td valign="top">✏️ <b>Edit, coming soon</b><br>Fix a note right in the score. Star the repo to hear about it first.</td>
   </tr>
 </table>
