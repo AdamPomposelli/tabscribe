@@ -1,0 +1,59 @@
+# Publishes the outputs of a passing "Windows build" run (server side, no re-upload from a laptop):
+#   - the engine runtime archive -> the assets release (next to the shared AI models)
+#   - the installer -> the app release, as Tabscribe-Setup-<version>-x64.exe and Tabscribe-Setup.exe
+# Triggered by committing .github/windows-publish.json (which run, which releases) on this branch.
+name: Windows publish
+
+on:
+  push:
+    branches: [windows-build]
+    paths: [.github/windows-publish.json]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read what to publish
+        id: cfg
+        run: |
+          echo "run_id=$(jq -r .run_id .github/windows-publish.json)" >> "$GITHUB_OUTPUT"
+          echo "app_tag=$(jq -r .app_tag .github/windows-publish.json)" >> "$GITHUB_OUTPUT"
+          echo "assets_tag=$(jq -r .assets_tag .github/windows-publish.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Check that the build run passed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          c=$(gh run view ${{ steps.cfg.outputs.run_id }} --repo ${{ github.repository }} --json conclusion -q .conclusion)
+          [ "$c" = "success" ] || { echo "run ${{ steps.cfg.outputs.run_id }} did not pass ($c)"; exit 1; }
+
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.cfg.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: art
+
+      - name: Upload to the releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          find art -type f | sort
+          exe=$(ls art/tabscribe-windows-installer/dist/Tabscribe-Setup-*.exe 2>/dev/null || ls art/tabscribe-windows-installer/Tabscribe-Setup-*.exe)
+          manifest=$(find art/tabscribe-windows-installer -name manifest-win32-x64.json | head -1)
+          # the installer's built-in manifest must point at exactly these runtime files
+          for f in art/tabscribe-windows-runtime/*; do
+            n=$(basename "$f"); s=$(sha256sum "$f" | cut -d' ' -f1)
+            jq -e --arg n "$n" --arg s "$s" '.components[] | select(.id=="runtime") | .files[] | select(.name==$n and .sha256==$s)' "$manifest" > /dev/null \
+              || { echo "$n does not match the manifest"; exit 1; }
+          done
+          gh release upload "${{ steps.cfg.outputs.assets_tag }}" art/tabscribe-windows-runtime/* "$manifest" --repo ${{ github.repository }} --clobber
+          cp "$exe" Tabscribe-Setup.exe
+          gh release upload "${{ steps.cfg.outputs.app_tag }}" "$exe" Tabscribe-Setup.exe --repo ${{ github.repository }} --clobber
+          gh release view "${{ steps.cfg.outputs.app_tag }}" --repo ${{ github.repository }} --json assets -q '.assets[] | "\(.name) \(.size)"'

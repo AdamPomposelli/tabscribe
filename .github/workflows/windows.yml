@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [windows-build]
+    paths-ignore: [.github/windows-publish.json, .github/workflows/windows-publish.yml]
 
 permissions:
   contents: read
