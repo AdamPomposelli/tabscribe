@@ -9,12 +9,13 @@
 <h3 align="center">Stop transcribing. Start playing.</h3>
 
 <p align="center">
-  AI writes the score and tab from any guitar recording, so your time goes to playing, not to rewinding.<br>100% free, 100% open source, 100% on your Mac.
+  AI writes the score and tab from any guitar recording, so your time goes to playing, not to rewinding.<br>100% free, 100% open source, 100% on your Mac or PC.
 </p>
 
 <p align="center">
   <a href="https://github.com/AdamPomposelli/tabscribe/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/AdamPomposelli/tabscribe?style=flat-square&color=19C08F&label=release"></a>
   <img alt="macOS on Apple silicon" src="https://img.shields.io/badge/macOS-Apple%20silicon-3F3F46?style=flat-square&logo=apple&logoColor=white">
+  <img alt="Windows 10 or later, x64" src="https://img.shields.io/badge/Windows-10%2B%20x64-3F3F46?style=flat-square">
   <img alt="100% free" src="https://img.shields.io/badge/price-100%25%20free-16A34A?style=flat-square">
   <img alt="Runs offline" src="https://img.shields.io/badge/runs-100%25%20local-0A7C62?style=flat-square">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-3F3F46?style=flat-square"></a>
@@ -24,6 +25,9 @@
 <p align="center">
   <a href="https://github.com/AdamPomposelli/tabscribe/releases/latest/download/Tabscribe.dmg">
     <img alt="Download Tabscribe for Mac" src="brand/readme/download-for-mac.svg" width="280">
+  </a>
+  <a href="https://github.com/AdamPomposelli/tabscribe/releases/latest/download/Tabscribe-Setup.exe">
+    <img alt="Download Tabscribe for Windows" src="brand/readme/download-for-windows.svg" width="280">
   </a>
   <br>
   <sub>No account · No subscription · <a href="#quick-start">Ready in about 5 minutes</a></sub>
@@ -53,7 +57,7 @@ Working out a song by ear means hours of rewinding the same four seconds. Let th
   </tr>
   <tr>
     <td align="center"><h3>🔒</h3></td>
-    <td><b>Your music stays yours.</b><br>Every model runs on your Mac. Your recordings are never uploaded, and there is no Tabscribe server to send them to.</td>
+    <td><b>Your music stays yours.</b><br>Every model runs on your computer. Your recordings are never uploaded, and there is no Tabscribe server to send them to.</td>
   </tr>
   <tr>
     <td align="center"><h3>💸</h3></td>
@@ -72,14 +76,15 @@ From download to your first tab in **about 5 minutes**.
 
 | | Step | ⏱ |
 |:-:|---|:-:|
-| **1** | ⬇️ **[Download Tabscribe.dmg](https://github.com/AdamPomposelli/tabscribe/releases/latest/download/Tabscribe.dmg)**, open it, and drag Tabscribe onto Applications. | 20 s |
-| **2** | 🔓 **Open Tabscribe.** macOS blocks the first launch: right-click the app and choose **Open**, or go to *System Settings → Privacy & Security* and click **Open Anyway**. | 20 s |
+| **1** | ⬇️ **Mac:** **[download Tabscribe.dmg](https://github.com/AdamPomposelli/tabscribe/releases/latest/download/Tabscribe.dmg)**, open it, and drag Tabscribe onto Applications.<br>**Windows:** **[download Tabscribe-Setup.exe](https://github.com/AdamPomposelli/tabscribe/releases/latest/download/Tabscribe-Setup.exe)** and run it. | 20 s |
+| **2** | 🔓 **Open Tabscribe.** macOS blocks the first launch: right-click the app and choose **Open**, or go to *System Settings → Privacy & Security* and click **Open Anyway**. On Windows, SmartScreen may say it protected your PC: click *More info* → **Run anyway**. | 20 s |
 | **3** | 📦 **Install the engine.** The first launch shows exactly what it needs (about 1.5 GB to download, 3 GB on disk), then downloads it with progress bars and checks every file. | 2–4 min |
 | **4** | 🎸 **Drop a recording.** Trim it, say whether the guitar plays alone or with a band, and press *Start transcription*. | 20 s |
 | **5** | ✨ **Play.** Score, tab and chord boxes, synced to your recording. | <b>~1&nbsp;min&nbsp;⚡</b> |
 
 > [!IMPORTANT]
-> Step 2 is there because Tabscribe isn't notarised by Apple yet. You do it once.
+> Step 2 is there because Tabscribe isn't notarised by Apple or code-signed for Windows yet. You do it once.
+> On Windows the AI runs on the CPU: a transcription takes a few minutes instead of about one.
 
 > [!TIP]
 > After the first launch, Tabscribe works **fully offline**. *Settings → Components* lets you check, repair, add or remove parts later, like the lighter Demucs isolation or the optional MuScriptor model.
@@ -132,8 +137,8 @@ Every project goes through the same steps, all on your Mac.
 
 ## 🔒 Privacy
 
-- 🏠 **Local-first:** projects, recordings and settings live in `~/Library/Application Support/Tabscribe`, on your Mac.
-- 🧠 **On-device AI:** every model runs on your Mac (Apple silicon GPU when it helps). No recording is ever uploaded.
+- 🏠 **Local-first:** projects, recordings and settings live on your computer, in `~/Library/Application Support/Tabscribe` (Mac) or `%APPDATA%\Tabscribe` (Windows).
+- 🧠 **On-device AI:** every model runs on your computer (the Apple silicon GPU when it helps, the CPU on Windows). No recording is ever uploaded.
 - 📦 **Downloads from this repository:** the engine and models come from this project's GitHub releases, checked file by file against their SHA-256. The optional MuScriptor model and the guitar-isolation weights come from Hugging Face.
 - 🚫 **No account, no telemetry, no analytics.** There is no Tabscribe server.
 
@@ -176,7 +181,7 @@ cd tabscribe
 |---|---|
 | **`backend/tabscribe/`** · Python | The engine: isolation, beat tracking, the transcription vote, chords, fingering, Guitar Pro and MIDI export. |
 | **`frontend/`** · TypeScript + React | The interface, with alphaTab for the score. |
-| **`desktop/`** · Electron | The Mac app and its one-click installer. |
+| **`desktop/`** · Electron | The Mac and Windows app and its one-click installer. |
 | **`release/`** | Builds the self-contained runtime and the release assets. See [`docs/RELEASING.md`](docs/RELEASING.md). |
 | **`bench/`** | The benchmarks the pipeline was tuned with. |
 | **`brand/`** | Logo, README assets and the demo video source. |

@@ -1,12 +1,12 @@
 # Publishes the outputs of a passing "Windows build" run (server side, no re-upload from a laptop):
 #   - the engine runtime archive -> the assets release (next to the shared AI models)
 #   - the installer -> the app release, as Tabscribe-Setup-<version>-x64.exe and Tabscribe-Setup.exe
-# Triggered by committing .github/windows-publish.json (which run, which releases) on this branch.
+# Triggered by committing .github/windows-publish.json (which run, which releases) to main.
 name: Windows publish
 
 on:
   push:
-    branches: [windows-build]
+    branches: [main]
     paths: [.github/windows-publish.json]
 
 permissions:

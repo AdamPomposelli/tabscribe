@@ -52,13 +52,13 @@ Requires an Apple-silicon Mac, Xcode command line tools, `gh` logged in, ~10 GB 
 The models are shared: Windows only adds its own engine runtime to the same assets release, and
 its own manifest (`desktop/manifest-win32-x64.json`, built into the Windows app).
 
-1. **Build and test on GitHub Actions** (`.github/workflows/windows.yml`, runs on `windows-latest`):
+1. **Build and test on GitHub Actions**: `gh workflow run windows.yml` (`.github/workflows/windows.yml`, `windows-latest`):
    `release/build_runtime_windows.py` (CPython 3.11 + the lock minus macOS-only packages, PyTorch
    CPU, an LGPL ffmpeg from BtbN/FFmpeg-Builds), then `npm --prefix desktop run dist:win` (NSIS
    installer), then `release/e2e_test.js` against the unpacked app: first-run install from a local
    asset server and a full transcription of `bench/YeuEm.wav`. Outputs are workflow artifacts.
 2. **Publish a passing run** server side: put its id and the target releases in
-   `.github/windows-publish.json` and push it; `.github/workflows/windows-publish.yml` checks that
+   `.github/windows-publish.json` and push it to main; `.github/workflows/windows-publish.yml` checks that
    the runtime matches the installer's manifest, then uploads the runtime (+ manifest) to the
    assets release and `Tabscribe-Setup-<version>-x64.exe` + `Tabscribe-Setup.exe` to the app release.
 3. Commit the published `manifest-win32-x64.json` (download it from the assets release).

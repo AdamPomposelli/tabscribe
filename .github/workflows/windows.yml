@@ -4,11 +4,9 @@
 # releases is a separate step: .github/workflows/windows-publish.yml (see docs/RELEASING.md).
 name: Windows build
 
+# Run it from main when a release needs a Windows build: gh workflow run windows.yml
 on:
   workflow_dispatch:
-  push:
-    branches: [windows-build]
-    paths-ignore: [.github/windows-publish.json, .github/workflows/windows-publish.yml]
 
 permissions:
   contents: read
